@@ -1,0 +1,27 @@
+# AIESDA Configuration: Anemoi Background + JEDI DA
+cost function:
+  cost type: 3D-Var
+  window begin: 2026-01-14T15:00:00Z
+  window length: PT6H
+
+  # 1. THE ANEMOI BACKGROUND
+  background:
+    state variables: [eastward_wind, northward_wind, air_temperature, surface_pressure]
+    date: 2026-01-14T18:00:00Z
+    filename: ncmrwf_anemoi_bg.nc  # Exported from your Anemoi ds.open_dataset()
+
+  # 2. THE OBSERVATIONS (From your IODA script)
+  observations:
+  - obs space:
+      name: Surface
+      obsfile: aiesda_obs_sfc.nc    # Created by your Python script
+      simulated variables: [air_temperature]
+    obs operator:
+      name: VertInterp              # UFO library function
+    obs error:
+      covariance model: diagonal
+
+  # 3. THE B-MATRIX (SABER library)
+  background error:
+    covariance model: static
+    date: 2026-01-14T18:00:00Z

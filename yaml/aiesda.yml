@@ -1,0 +1,39 @@
+# AIESDA Configuration
+cost function:
+  background:
+    filename: ncmrwf_anemoi_bg.nc  # From your Python script
+    state variables: [air_temperature]
+  
+  observations:
+  - obs space:
+      obsfile: aiesda_obs_sfc.nc    # From your IODA conversion
+    obs operator:
+      name: VertInterp
+
+  background error:
+    covariance model: SABER
+    saber central block:
+      saber block name: BUMP_NICAS
+      read:
+        horizontal_length_scale: 200.0e3
+    saber outer blocks:
+    - saber block name: StdDev
+      read:
+        dataset: anemoi_error_stats.nc # From the xarray calculation above
+
+obs space:
+  name: Surface_Obs
+  obsfile: aiesda_obs_sfc.nc
+  simulated variables: [air_temperature]  # Matches your ('air_temperature', 'ObsValue')
+
+obs operator:
+  name: VertInterp
+  vertical coordinate: height            # Assumes your Anemoi NetCDF has 'height'
+  observation vertical coordinate: height # Assumes your IODA MetaData has 'height'
+
+obs filters:
+- filter: Background Check
+  filter variables: [air_temperature]
+  threshold: 3.0   # Reject if |Obs - Anemoi| > 3.0 Kelvin
+  action:
+    name: reject

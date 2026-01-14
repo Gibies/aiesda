@@ -1,0 +1,36 @@
+name: aiesda_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - numpy
+  - pandas
+  - xarray
+  - netcdf4
+  - cfgrib
+  - eccodes        # Crucial for GRIB/BUFR decoding
+  - cartopy        # For geospatial plotting
+  - pytorch             # For Anemoi ML models
+  - matplotlib
+  - seaborn
+  - scipy
+  - dask
+  - iris           # Often used in NCMRWF/Unified Model tools
+  - pip
+  - pip:
+    - anemoi-datasets
+    - anemoi-transform
+    - anemoi-graphs
+    - anemoi-inference
+    - earthkit-data
+    - earthkit-regrid
+    - metpy        # Helpful for atmospheric calculations
+    - git+https://github.com/NCMRWF/aiesda.git  # Direct install from source
+
+##############################################
+### Procedure for Installation             ###
+##############################################
+#conda env create -f environment.yml
+#conda activate aiesda_env
+##############################################
