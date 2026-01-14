@@ -1,0 +1,10 @@
+observations:
+- obs space:
+    name: Surface
+    obsfile: aiesda_obs_surface.nc  # The file created above
+    simulated variables: [air_temperature]
+  obs operator:
+    name: VertInterp  # UFO function to interpolate model to station height
+  obs filters:
+  - filter: Background Check
+    threshold: 3.0   # AIESDA QC: Reject obs if they differ too much from model

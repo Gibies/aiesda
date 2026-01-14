@@ -1,0 +1,12 @@
+background error:
+  covariance model: SABER
+  saber central block:
+    saber block name: BUMP_NICAS  # Uses JEDI's BUMP library for correlations
+    read:
+      # These parameters define the spatial 'stretch' of your AI model's influence
+      horizontal_length_scale: 200.0e3 # 200km correlation distance
+      vertical_length_scale: 1.0       # Surface focus for 2m Temperature
+  saber outer blocks:
+  - saber block name: StdDev
+    read:
+      dataset: anemoi_error_stats.nc  # Pre-calculated error stats for Anemoi

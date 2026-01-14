@@ -1,0 +1,13 @@
+observations:
+- obs space:
+    name: Surface_Observations
+    obsdatain: 
+      engine:
+        type: Read
+        obsfile: monitobs_converted_20260114.nc  # Your converted Monitobs data
+    simulated variables: [air_temperature, surface_pressure]
+  obs operator:
+    name: VertInterp  # JEDI UFO library function
+  obs filters:
+  - filter: Background Check  # Quality control inherited/upgraded from Monitobs
+    threshold: 3.0
