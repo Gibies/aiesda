@@ -61,3 +61,20 @@ def run_surface_assimilation(args, work_dir):
     # ... (Actual AI model loading and data processing logic goes here) ...
     print(f"Processing surface data for {args.date} in {work_dir}")
 
+
+def run_cycle(conf):
+    """
+    Core logic converted to a function. 
+    Uses the 'conf' object for all path references.
+    """
+    print(f"Processing Surface Data in: {conf.OUTDIR}")
+    
+    # Use paths defined in aidaconf.py
+    obs_file = os.path.join(conf.OBSDIR, f"sfc_obs_{conf.cdate}.nc")
+    guess_file = os.path.join(conf.GESDIR, f"sfc_guess_{conf.cdate}.nc")
+    
+    # ... AI Inference Logic Here ...
+    # result = model.predict(obs_file, guess_file)
+    
+    output_path = os.path.join(conf.OUTDIR, "analysis_sfc.nc")
+    print(f"Analysis saved to {output_path}")
