@@ -1,5 +1,5 @@
 
-#################################################################################
+
 from __future__ import print_function
 import traceback
 from eccodes import *
@@ -28,7 +28,7 @@ if len(sys.argv) > 2:
 else:
     CYC = "00"
 
-obsname=os.environ.get('obsname', "mwri")
+obsname=os.environ.get('obsname', "")
 cntmax=int(os.environ.get('OBS_CNT_MAX', 500000))
 btchcnt=int(os.environ.get('BTCH_CNT_MAX',5))
 TDATE=os.environ.get('PDY',PDY)
@@ -39,11 +39,14 @@ outpath=os.environ.get('WRK_OBSTORE',"/scratch/"+USER+"/obstore/work/"+obsname+"
 inpath=os.environ.get('BUFRDIR',"")
 slctstr=os.environ.get('BUFRFILESTR',"")
 nmlfile=os.environ.get('KEYNMLFILE',OBSNML+"/keys_"+obsname+".nml")
-eleindxmaptbl=os.environ.get('ELEINDXMAPTBL',OBSNML+"/aapp_fieldname.nml")
 
-data=obsmod.ecbufr_decode_files(inpath,Tnode,slctstr,nmlfile,eleindxmaptbl=eleindxmaptbl)
+data=obsmod.ecbufr_decode_files(inpath,Tnode,slctstr,nmlfile)
 obsmod.ascii_file_write(data,outfile=outpath+"/data_"+obsname+".txt",option=1)
 outfile=obsmod.obstore_write(data,nmlfile,outpath,btchcnt=btchcnt,cntmax=cntmax,DT=Tnode,diagflag=0)
 
-#################################################################################
 
+#print(outfile)
+
+#out=obstore.obstore_read_file(outpath,"seviri")
+
+#print(out.data)
