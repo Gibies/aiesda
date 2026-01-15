@@ -1,6 +1,7 @@
 
 import os
 import numpy
+import xarray
 import oops
 import saber
 import ioda
@@ -27,6 +28,38 @@ class JEDI_Interface:
         """Calculates grad(J) for the JEDI minimizer."""
         # Logic for dJ/dx
         pass
+
+class SaberInterface:
+    def __init__(self, conf):
+        self.conf = conf
+        try:
+            import oops
+            import saber
+            self.jedi_ready = True
+        except ImportError:
+            self.jedi_ready = False
+
+    def apply_localization(self, increments):
+        if not self.jedi_ready:
+            print("SABER not found. Skipping localization.")
+            return increments
+        # Logic to wrap increments in FieldSet and apply SABER block
+        return increments
+
+class DataManager:
+    def __init__(self, conf):
+        self.conf = conf
+
+    def get_obs_minus_bg(self, var_name):
+        """Logic to fetch and subtract background from observations"""
+        obs_path = os.path.join(self.conf.OBSDIR, f"{var_name}_obs.nc")
+        bg_path = os.path.join(self.conf.GESDIR, f"{var_name}_bg.nc")
+        
+        obs = xarray.open_dataset(obs_path)
+        bg = xarray.open_dataset(bg_path)
+        
+        return obs - bg
+
 
 def apply_h_operator(state, obs_data):
     """Maps model state to observation space (JEDI H-operator)."""
