@@ -61,6 +61,24 @@ def run_surface_assimilation(args, work_dir):
     # ... (Actual AI model loading and data processing logic goes here) ...
     print(f"Processing surface data for {args.date} in {work_dir}")
 
+def run_assim_logic(conf):
+    """
+    Core Logic: No longer parses args.
+    Uses the attributes provided by the AidaConfig instance.
+    """
+    # Use paths provided by aidaconf.py
+    # Example: conf.OBSDIR, conf.GESDIR, conf.OUTDIR
+    print(f"--- Surface Assimilation Phase ---")
+    print(f"Working Directory: {conf.DATADIR}")
+    print(f"Target Date: {conf.cdate}")
+
+    # Logic to load AI model using paths from conf
+    model_path = os.path.join(conf.STATICDIR, "sfc_model_v1.pth")
+
+    # ... Process Surface Data ...
+    # result = ai_engine.predict(input_data=conf.GESDIR)
+
+    print(f"Surface Analysis complete for {conf.expid}")
 
 def run_cycle(conf):
     """
