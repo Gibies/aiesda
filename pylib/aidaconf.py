@@ -128,3 +128,36 @@ class SurfaceAssimTask:
         # Logic for reading conf.OBSDIR and conf.GESDIR goes here
         # result = self.my_ai_model(obs, guess)
         print(f"Saving output to {self.conf.OUTDIR}")
+
+import os
+import sys
+
+class AidaConfig:
+    # ... (Existing AidaConfig logic remains here) ...
+    def __init__(self):
+        # (Existing initialization logic)
+        pass
+
+class SurfaceAssimWorker:
+    """
+    Standardized Surface AI Assimilation Worker.
+    Located inside the library for global accessibility.
+    """
+    def __init__(self, conf: AidaConfig):
+        self.conf = conf
+        # Centralize path logic inside the library
+        self.obs_file = os.path.join(self.conf.OBSDIR, f"sfc_obs_{self.conf.cdate}.nc")
+        self.ges_file = os.path.join(self.conf.GESDIR, f"guess_{self.conf.cdate}.nc")
+
+    def run(self):
+        print(f"--- [Library Worker] Processing Surface AI ---")
+        print(f"Target: {self.conf.cdate} | Exp: {self.conf.expid}")
+        
+        # Check if files exist before processing
+        if not os.path.exists(self.obs_file):
+            raise FileNotFoundError(f"Observation file missing: {self.obs_file}")
+
+        # Insert AI Inference logic here
+        # Example: model.predict(self.obs_file, self.ges_file)
+        
+        print(f"Analysis saved to: {self.conf.OUTDIR}")
