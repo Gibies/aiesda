@@ -3,6 +3,7 @@ import os
 import numpy
 import oops
 import saber
+import ioda
 from pyiodaconv import ioda_conv_engines as iodaconv
 
 class JEDI_Interface:
