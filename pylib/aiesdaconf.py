@@ -3,6 +3,11 @@ import sys
 import logging
 from datetime import datetime
 
+ufo_engine = dalib.UFOInterface('yaml/ufo_setup.yml')
+ioda_engine = dalib.IODAInterface('yaml/ioda_setup.yml')
+saber_engine = dalib.SABERInterface('yaml/saber_setup.yml')
+oops_engine = dalib.OOPSInterface('yaml/oops_setup.yml')
+
 class AidaConfig:
     """The central engine for paths and environment settings."""
     def __init__(self):
