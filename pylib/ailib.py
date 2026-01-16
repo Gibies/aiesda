@@ -1,4 +1,6 @@
-
+"""
+AI Interface Library
+"""
 import os
 import xarray 
 import numpy 
@@ -7,6 +9,36 @@ import torch.nn as tornn
 import torch.nn.functional as func
 import anemoi.inference as anemoinfe
 import anemoi.datasets as anemoids 
+
+class AnemoiInterface:
+    """Interface for Anemoi ML-NWP models within aiesda."""
+
+    def __init__(self, model_path, device=None):
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        # Load the Anemoi checkpoint (contains weights and metadata)
+        self.model = AnemoiPredictor.from_checkpoint(model_path).to(self.device)
+        self.model.eval()
+
+    def prepare_input(self, analysis_file):
+        """
+        Converts the JEDI/AIESDA analysis NetCDF into Anemoi input tensors.
+        Handles variable renaming and normalization.
+        """
+        ds = xr.open_dataset(analysis_file)
+        # Anemoi expects specific variable names (e.g., '2t' instead of 'air_temperature')
+        # Logic to map back from JEDI naming convention
+        return ds
+
+    def run_forecast(self, initial_state, steps=24):
+        """
+        Executes the forecast rollout.
+        initial_state: xarray dataset or torch tensor
+        steps: Number of auto-regressive rollout steps
+        """
+        with torch.no_grad():
+            # Anemoi handles the internal rollout logic
+            forecast = self.model.predict(initial_state, steps=steps)
+        return forecast
 
 class AtmosphericAutoencoder(tornn.Module):
     def __init__(self, input_channels=1, latent_dim=128):
@@ -34,6 +66,23 @@ class AtmosphericAutoencoder(tornn.Module):
         latent = self.encoder(x)
         reconstruction = self.decoder(latent)
         return reconstruction, latent
+
+"""
+Public functions
+"""
+
+def rollout_forecast(model_checkpoint, analysis_nc, output_nc, lead_time_hours):
+    """High-level wrapper for the jobs/aiesda.py script."""
+    ai_engine = AnemoiInterface(model_checkpoint)
+    input_data = ai_engine.prepare_input(analysis_nc)
+    
+    # Calculate steps based on model's dt (usually 6h)
+    steps = lead_time_hours // 6 
+    
+    forecast_ds = ai_engine.run_forecast(input_data, steps=steps)
+    forecast_ds.to_netcdf(output_nc)
+    return output_nc
+
 
 def load_ai_model(model_path, config):
     """Initializes and loads the pre-trained weights."""

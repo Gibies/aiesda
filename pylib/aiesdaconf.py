@@ -46,3 +46,9 @@ class SurfaceAssimWorker(BaseWorker):
         # result = self.ai_engine.predict(self.obs_file, self.ges_file)
         
         self.logger.info(f"Successfully saved analysis to {self.out_file}")
+
+
+"""
+Public functions
+"""
+
