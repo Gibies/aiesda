@@ -18,16 +18,35 @@ class AnemoiInterface:
         # Load the Anemoi checkpoint (contains weights and metadata)
         self.model = AnemoiPredictor.from_checkpoint(model_path).to(self.device)
         self.model.eval()
+def prepare_input(self, analysis_file, var_mapping=None):
+        """
+        Converts the JEDI/AIESDA analysis NetCDF into Anemoi input format.
+        
+        Args:
+            analysis_file (str): Path to the NetCDF file output by JEDI.
+            var_mapping (dict): JEDI to Anemoi mapping. 
+                                Default: {'air_temperature': '2t', 'eastward_wind': 'u10'}
+        """
+        if var_mapping is None:
+            var_mapping = {
+                'air_temperature': '2t',
+                'eastward_wind': 'u10',
+                'northward_wind': 'v10',
+                'specific_humidity': 'q'
+            }
 
-    def prepare_input(self, analysis_file):
-        """
-        Converts the JEDI/AIESDA analysis NetCDF into Anemoi input tensors.
-        Handles variable renaming and normalization.
-        """
         ds = xr.open_dataset(analysis_file)
-        # Anemoi expects specific variable names (e.g., '2t' instead of 'air_temperature')
-        # Logic to map back from JEDI naming convention
-        return ds
+
+        # 1. Rename JEDI variables back to Anemoi/ECMWF short names
+        mapping_to_use = {k: v for k, v in var_mapping.items() if k in ds.variables}
+        ds_anemoi = ds.rename(mapping_to_use)
+
+        # 2. Data Integrity: Ensure time dimension exists (Anemoi expects a sequence)
+        if 'time' not in ds_anemoi.dims:
+            ds_anemoi = ds_anemoi.expand_dims('time')
+
+        print(f"Prepared JEDI analysis from {analysis_file} for Anemoi input.")
+        return ds_anemoi
 
     def run_forecast(self, initial_state, steps=24):
         """
@@ -39,6 +58,21 @@ class AnemoiInterface:
             # Anemoi handles the internal rollout logic
             forecast = self.model.predict(initial_state, steps=steps)
         return forecast
+
+    def export_for_jedi(self, dataset, output_path, analysis_time, var_mapping=None):
+        """Converts Anemoi Xarray/Zarr output to JEDI-compliant NetCDF."""
+        if var_mapping is None:
+            var_mapping = {
+                'air_temperature': '2t',
+                'eastward_wind': 'u10',
+                'northward_wind': 'v10',
+                'specific_humidity': 'q'
+            }
+
+        ds_at_time = dataset.sel(time=analysis_time)
+        ds_jedi = ds_at_time.rename({k: v for v, k in var_mapping.items() if k in ds_at_time.variables})
+        ds_jedi.to_netcdf(output_path)
+        return output_path
 
 class AtmosphericAutoencoder(tornn.Module):
     def __init__(self, input_channels=1, latent_dim=128):
