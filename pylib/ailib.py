@@ -1,6 +1,21 @@
+#! python3
 """
 AI Interface Library
+Created on Wed Jan 14 19:32:07 2026
+@author: gibies
 """
+CURR_PATH=os.path.dirname(os.path.abspath(__file__))
+PKGHOME=os.path.dirname(CURR_PATH)
+OBSLIB=os.environ.get('OBSLIB',PKGHOME+"/pylib")
+sys.path.append(OBSLIB)
+OBSDIC=os.environ.get('OBSDIC',PKGHOME+"/pydic")
+sys.path.append(OBSDIC)
+OBSNML=os.environ.get('OBSNML',PKGHOME+"/nml")
+sys.path.append(OBSNML)
+
+"""
+"""
+import sys
 import os
 import xarray 
 import numpy 
@@ -9,6 +24,8 @@ import torch.nn as tornn
 import torch.nn.functional as func
 import anemoi.inference as anemoinfe
 import anemoi.datasets as anemoids 
+import aidadic
+#import obsdic
 
 class AnemoiInterface:
     """Interface for Anemoi ML-NWP models within aiesda."""
@@ -18,7 +35,7 @@ class AnemoiInterface:
         # Load the Anemoi checkpoint (contains weights and metadata)
         self.model = AnemoiPredictor.from_checkpoint(model_path).to(self.device)
         self.model.eval()
-def prepare_input(self, analysis_file, var_mapping=None):
+    def prepare_input(self, analysis_file, var_mapping=None):
         """
         Converts the JEDI/AIESDA analysis NetCDF into Anemoi input format.
         
@@ -28,12 +45,7 @@ def prepare_input(self, analysis_file, var_mapping=None):
                                 Default: {'air_temperature': '2t', 'eastward_wind': 'u10'}
         """
         if var_mapping is None:
-            var_mapping = {
-                'air_temperature': '2t',
-                'eastward_wind': 'u10',
-                'northward_wind': 'v10',
-                'specific_humidity': 'q'
-            }
+            var_mapping = aidadic.jedi_anemoi_var_mapping
 
         ds = xr.open_dataset(analysis_file)
 
@@ -62,12 +74,7 @@ def prepare_input(self, analysis_file, var_mapping=None):
     def export_for_jedi(self, dataset, output_path, analysis_time, var_mapping=None):
         """Converts Anemoi Xarray/Zarr output to JEDI-compliant NetCDF."""
         if var_mapping is None:
-            var_mapping = {
-                'air_temperature': '2t',
-                'eastward_wind': 'u10',
-                'northward_wind': 'v10',
-                'specific_humidity': 'q'
-            }
+            var_mapping = aidadic.jedi_anemoi_var_mapping
 
         ds_at_time = dataset.sel(time=analysis_time)
         ds_jedi = ds_at_time.rename({k: v for v, k in var_mapping.items() if k in ds_at_time.variables})
