@@ -327,7 +327,42 @@ class CloudMaskManager:
         """Returns only the observations that passed the cloud test."""
         return obs_dataset.where(clear_mask, drop=True)
 
-# In dapipe.py
+class VerticalInterpolator:
+    """Handles interpolation from coarse AI levels to CRTM standard layers."""
+    
+    def __init__(self):
+        # Always use the standard levels defined in aidadic
+        self.target_levels = np.array(aidadic.crtm_standard_levels)
+
+    def interpolate_field(self, source_p, data_array):
+        """Performs log-linear interpolation for meteorological profiles."""
+        # Using log-pressure for linear interpolation of T and Q
+        x_src = np.log(source_p)
+        x_tgt = np.log(self.target_levels)
+
+        f = interp1d(x_src, data_array, axis=0, kind='linear', 
+                     bounds_error=False, fill_value="extrapolate")
+        
+        return f(x_tgt)
+
+    def generate_geovals(self, model_ds):
+        """
+        Main entry point: Converts Anemoi state to JEDI GeoVaLs on CRTM levels.
+        """
+        # Dictionary to hold the interpolated high-res fields
+        geovals_ds = xr.Dataset(coords={'lev': self.target_levels})
+        
+        # Source pressure from Anemoi (e.g., 13 levels)
+        source_p = model_ds['lev'].values 
+
+        # Loop through mapping defined in aidadic
+        for jedi_var, anemoi_var in aidadic.jedi_anemoi_var_mapping.items():
+            if anemoi_var in model_ds:
+                # Interpolate from 13 levels -> 100 levels
+                interp_data = self.interpolate_field(source_p, model_ds[anemoi_var].values)
+                geovals_ds[jedi_var] = (('lev', 'lat', 'lon'), interp_data)
+                
+        return geovals_ds
 
 class RadiancePipeline(VerticalInterpolator, StabilityChecker, CloudMaskManager, RadianceBiasManager):
     """
@@ -335,10 +370,10 @@ class RadiancePipeline(VerticalInterpolator, StabilityChecker, CloudMaskManager,
     The pipeline IS an interpolator, a checker, etc.
     """
     # Import the classes into the class namespace
-    from dainterp import VerticalInterpolator
-    from daquality import StabilityChecker
-    from dafilter import CloudMaskManager
-    from dabias import RadianceBiasManager
+    import VerticalInterpolator
+    import StabilityChecker
+    import CloudMaskManager
+    import RadianceBiasManager
 
     def __init__(self, conf, sensor_id):
         # Initialize all parent classes
