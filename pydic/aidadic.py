@@ -23,4 +23,6 @@ jedi_anemoi_var_mapping = {
     'eastward_wind': 'u10',
     'northward_wind': 'v10',
     'specific_humidity': 'q'
+    'surface_pressure': 'sp',         # Added for Radiance/UFO
+    'air_pressure': 'p'               # Added for vertical levels
   }

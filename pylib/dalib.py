@@ -25,6 +25,7 @@ import oops
 import saber
 import ioda
 from pyiodaconv import ioda_conv_engines as iodaconv
+import aidadic
 
 class JEDI_Interface:
     """Interface class to be used by the JEDI-OOPS wrapper."""
@@ -153,6 +154,65 @@ class SurfaceManager:
         """Converts cleaned DataFrame to JEDI IODA NetCDF."""
         # Implementation of IODA Grouping (ObsValue, ObsError, MetaData)
         pass
+
+
+class RadianceObserver:
+    """Handles JEDI UFO Observation Operators for Satellites (e.g., AMSU-A, IASI)."""
+    
+    def __init__(self, sensor_id, channels, crtm_coeff_path):
+        self.sensor_id = sensor_id
+        self.channels = channels
+        # JEDI UFO Config for Radiance
+        self.ufo_config = {
+            "name": "Radiance",
+            "sensor": self.sensor_id,
+            "channels": self.channels,
+            "Absorbers": ["H2O", "O3"],
+            "CoefficientPath": crtm_coeff_path
+        }
+
+
+    def prepare_geovals(self, model_ds):
+        """
+        Extracts vertical profiles from the AI model (Anemoi) into JEDI GeoVaLs.
+        Uses aidadic for consistent variable naming.
+        """
+        # Create a reverse mapping: { 'anemoi_name': 'jedi_name' }
+        # This helps us identify which Anemoi variable corresponds to which JEDI GeoVaL
+        anemoi_to_jedi = {v: k for k, v in aidadic.jedi_anemoi_var_mapping.items()}
+        
+        geovals = {}
+        
+        # Iterating through the dataset to map Anemoi keys to JEDI keys
+        for anemoi_var in model_ds.data_vars:
+            if anemoi_var in anemoi_to_jedi:
+                jedi_name = anemoi_to_jedi[anemoi_var]
+                geovals[jedi_name] = model_ds[anemoi_var].values
+                print(f"Mapped Anemoi '{anemoi_var}' to JEDI GeoVaL '{jedi_name}'")
+        
+        # Handle special cases not in the standard 2D mapping (like surface pressure)
+        if 'surface_pressure' not in geovals and 'sp' in model_ds:
+             geovals['surface_pressure'] = model_ds['sp'].values
+
+        return geovals
+
+
+    def compute_hofx(self, geovals, obs_space):
+        """
+        Computes H(x) - the Simulated Brightness Temperatures.
+        This uses the JEDI UFO Radiance operator + CRTM.
+        """
+        # 1. Initialize the UFO operator
+        hop = ufo.ObsOperator(obs_space, self.ufo_config)
+        
+        # 2. Container for simulated observations
+        hofx = ioda.ObsVector(obs_space)
+        
+        # 3. Simulate observations based on the GeoVaLs (model state)
+        hop.simulate_obs(geovals, hofx)
+        
+        return hofx
+
 
 """
 Public functions
