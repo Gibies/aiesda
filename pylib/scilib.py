@@ -57,3 +57,46 @@ class AssimilationValidator:
             "rmse_increment": np.sqrt((increment_ds**2).mean()).to_array().values
         }
         return stats
+
+    def run_sensitivity_test(self, ai_engine, base_analysis_file, var_name, epsilon=0.1):
+        """
+        Computes the sensitivity of the analysis to the background state.
+        S = (A(x + eps) - A(x)) / eps
+        """
+        # 1. Load baseline analysis
+        base_an = xr.open_dataset(base_analysis_file)
+
+        # 2. Create a perturbed background (simulating a change in input)
+        # We add a small 'epsilon' to the variable in question
+        perturbed_bg = base_an.copy(deep=True)
+        perturbed_bg[var_name] = perturbed_bg[var_name] + epsilon
+
+        perturbed_bg_path = os.path.join(self.conf.WORK_DIR, "temp_perturbed_bg.nc")
+        perturbed_bg.to_netcdf(perturbed_bg_path)
+
+        # 3. Run AI Inference on the perturbed state
+        perturbed_out_path = os.path.join(self.conf.WORK_DIR, "temp_perturbed_analysis.nc")
+        ai_engine.rollout_forecast(
+            analysis_nc=perturbed_bg_path,
+            output_nc=perturbed_out_path,
+            lead_time_hours=6
+        )
+
+        # 4. Calculate Sensitivity Map
+        perturbed_an = xr.open_dataset(perturbed_out_path)
+        sensitivity = (perturbed_an[var_name] - base_an[var_name]) / epsilon
+
+        return sensitivity
+
+    def plot_sensitivity(self, sensitivity_ds, var_name):
+        """Visualizes areas where the model is most sensitive to input changes."""
+        plt.figure(figsize=(10, 6))
+        sensitivity_ds.plot(cmap='viridis')
+        plt.title(f"Model Sensitivity Map: {var_name}")
+
+        save_path = os.path.join(self.plot_dir, f"sensitivity_{var_name}.png")
+        plt.savefig(save_path)
+        plt.close()
+        return save_path
+
+
