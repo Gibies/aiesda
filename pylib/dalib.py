@@ -29,27 +29,6 @@ import ioda
 from pyiodaconv import ioda_conv_engines as iodaconv
 import aidadic
 
-class JEDI_Interface:
-    """Interface class to be used by the JEDI-OOPS wrapper."""
-    
-    def __init__(self, config):
-        self.config = config
-        self.geometry = self._setup_geometry()
-
-    def _setup_geometry(self):
-        # Define grid based on NCMRWF standards (e.g., IMDAA 12km)
-        pass
-
-    def apply_observation_operator(self, state):
-        """Equivalent to H(x) in JEDI."""
-        # Call your AI model from ailib here
-        # return simulated_observations
-        pass
-
-    def compute_cost_gradient(self, state, observations):
-        """Calculates grad(J) for the JEDI minimizer."""
-        # Logic for dJ/dx
-        pass
 
 class UFOInterface:
     """Interface to JEDI Unified Forward Operators within dalib."""
@@ -118,6 +97,27 @@ class SaberInterface:
         std_dev.to_netcdf(output_nc)
         return output_nc
 
+class JEDI_Interface:
+    """Interface class to be used by the JEDI-OOPS wrapper."""
+    
+    def __init__(self, config):
+        self.config = config
+        self.geometry = self._setup_geometry()
+
+    def _setup_geometry(self):
+        # Define grid based on NCMRWF standards (e.g., IMDAA 12km)
+        pass
+
+    def apply_observation_operator(self, state):
+        """Equivalent to H(x) in JEDI."""
+        # Call your AI model from ailib here
+        # return simulated_observations
+        pass
+
+    def compute_cost_gradient(self, state, observations):
+        """Calculates grad(J) for the JEDI minimizer."""
+        # Logic for dJ/dx
+        pass
 
 class SurfaceManager:
     """Handles QC and JEDI-formatting for surface observations."""
@@ -425,7 +425,7 @@ def write_ioda_surface_obs(output_path, lats, lons, values, errors, station_ids,
         (var_name, 'ObsError'): errors.astype('float32'),
         ('latitude', 'MetaData'): lats.astype('float32'),
         ('longitude', 'MetaData'): lons.astype('float32'),
-        ('station_id', 'MetaData'): np.array(station_ids, dtype=object),
+        ('station_id', 'MetaData'): numpy.array(station_ids, dtype=object),
     }
 
     # 4. Perform the write (HDF5/NetCDF)
