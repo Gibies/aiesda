@@ -27,23 +27,26 @@ import ailib
 import dalib
 import yaml
 
-
 class AidaConfig:
-    """Single Source of Truth for all paths and cycle settings."""
     def __init__(self, args):
         self.cdate = args.date
         self.cycle = args.cycle
         self.expid = args.expid
         self.home = os.environ.get('AIESDA_HOME', os.getcwd())
         
-        # Centralized Directory Tree
+        # All path logic lives HERE ONLY
         self.WORK_DIR = f"{self.home}/work/{self.expid}/{self.cdate}/{self.cycle}"
         self.OBSDIR = f"{self.WORK_DIR}/obs"
         self.GESDIR = f"{self.WORK_DIR}/guess"
         self.OUTDIR = f"{self.WORK_DIR}/analysis"
         self.STATICDIR = f"{self.home}/static"
         
-        os.makedirs(self.OUTDIR, exist_ok=True)
+        # Automatic directory creation
+        for path in [self.OBSDIR, self.GESDIR, self.OUTDIR]:
+            os.makedirs(path, exist_ok=True)
+
+# DELETE: setup_environment(args)
+# DELETE: config_env(args)
 
 class BaseWorker:
     """Handles shared logging and file checking for all tasks."""
@@ -99,15 +102,6 @@ def get_common_args():
     parser.add_argument('--expid', default='test_run', help='Experiment ID')
     return parser
 
-def setup_environment(args):
-    """Sets up standard NCMRWF directory structures."""
-    base_path = os.environ.get('AIESDA_HOME', './')
-    work_dir = os.path.join(base_path, args.expid, args.date, args.cycle)
-    os.makedirs(work_dir, exist_ok=True)
-    
-    logging.basicConfig(level=logging.INFO, 
-                        format='%(asctime)s - %(levelname)s - %(message)s')
-    return work_dir
 
 def get_aida_args(description="AIESDA Script"):
     """Centralized argument parser for all AIESDA scripts."""
@@ -117,20 +111,6 @@ def get_aida_args(description="AIESDA Script"):
     parser.add_argument('--expid', type=str, default='test', help='Experiment ID')
     # Add other common flags found in both scripts here
     return parser
-
-def config_env(args):
-    """Sets up common paths and environment variables."""
-    config = {}
-    config['HOME'] = os.environ.get('AIESDA_HOME', os.getcwd())
-    config['WORK_DIR'] = f"{config['HOME']}/work/{args.expid}/{args.date}/{args.cycle}"
-
-    # Ensure work directory exists
-    os.makedirs(config['WORK_DIR'], exist_ok=True)
-
-    # Add project paths to sys.path to ensure imports work correctly
-    sys.path.append(os.path.join(config['HOME'], 'pylib'))
-
-    return config
 
 def run_assimilation(args, cfg):
     """
