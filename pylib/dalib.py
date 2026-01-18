@@ -5,6 +5,8 @@ Created on Wed Jan 14 19:41:36 2026
 @author: gibies
 https://github.com/Gibies
 """
+import os
+import sys
 CURR_PATH=os.path.dirname(os.path.abspath(__file__))
 PKGHOME=os.path.dirname(CURR_PATH)
 OBSLIB=os.environ.get('OBSLIB',PKGHOME+"/pylib")
@@ -17,36 +19,16 @@ sys.path.append(OBSNML)
 """
 dalib.py
 """
-import os
 import numpy
+import pandas
 import xarray
 import ufo
 import oops
 import saber
 import ioda
 from pyiodaconv import ioda_conv_engines as iodaconv
+import aidadic
 
-class JEDI_Interface:
-    """Interface class to be used by the JEDI-OOPS wrapper."""
-    
-    def __init__(self, config):
-        self.config = config
-        self.geometry = self._setup_geometry()
-
-    def _setup_geometry(self):
-        # Define grid based on NCMRWF standards (e.g., IMDAA 12km)
-        pass
-
-    def apply_observation_operator(self, state):
-        """Equivalent to H(x) in JEDI."""
-        # Call your AI model from ailib here
-        # return simulated_observations
-        pass
-
-    def compute_cost_gradient(self, state, observations):
-        """Calculates grad(J) for the JEDI minimizer."""
-        # Logic for dJ/dx
-        pass
 
 class UFOInterface:
     """Interface to JEDI Unified Forward Operators within dalib."""
@@ -115,6 +97,27 @@ class SaberInterface:
         std_dev.to_netcdf(output_nc)
         return output_nc
 
+class JEDI_Interface:
+    """Interface class to be used by the JEDI-OOPS wrapper."""
+    
+    def __init__(self, config):
+        self.config = config
+        self.geometry = self._setup_geometry()
+
+    def _setup_geometry(self):
+        # Define grid based on NCMRWF standards (e.g., IMDAA 12km)
+        pass
+
+    def apply_observation_operator(self, state):
+        """Equivalent to H(x) in JEDI."""
+        # Call your AI model from ailib here
+        # return simulated_observations
+        pass
+
+    def compute_cost_gradient(self, state, observations):
+        """Calculates grad(J) for the JEDI minimizer."""
+        # Logic for dJ/dx
+        pass
 
 class SurfaceManager:
     """Handles QC and JEDI-formatting for surface observations."""
@@ -154,50 +157,323 @@ class SurfaceManager:
         # Implementation of IODA Grouping (ObsValue, ObsError, MetaData)
         pass
 
+
+class RadianceObserver:
+    """Handles JEDI UFO Observation Operators for Satellites (e.g., AMSU-A, IASI)."""
+    
+    def __init__(self, sensor_id, channels, crtm_coeff_path):
+        self.sensor_id = sensor_id
+        self.channels = channels
+        # JEDI UFO Config for Radiance
+        self.ufo_config = {
+            "name": "Radiance",
+            "sensor": self.sensor_id,
+            "channels": self.channels,
+            "Absorbers": ["H2O", "O3"],
+            "CoefficientPath": crtm_coeff_path
+        }
+
+
+    def prepare_geovals(self, model_ds):
+        """
+        Extracts vertical profiles from the AI model (Anemoi) into JEDI GeoVaLs.
+        Uses aidadic for consistent variable naming.
+        """
+        # Create a reverse mapping: { 'anemoi_name': 'jedi_name' }
+        # This helps us identify which Anemoi variable corresponds to which JEDI GeoVaL
+        anemoi_to_jedi = {v: k for k, v in aidadic.jedi_anemoi_var_mapping.items()}
+        
+        geovals = {}
+        
+        # Iterating through the dataset to map Anemoi keys to JEDI keys
+        for anemoi_var in model_ds.data_vars:
+            if anemoi_var in anemoi_to_jedi:
+                jedi_name = anemoi_to_jedi[anemoi_var]
+                geovals[jedi_name] = model_ds[anemoi_var].values
+                print(f"Mapped Anemoi '{anemoi_var}' to JEDI GeoVaL '{jedi_name}'")
+        
+        # Handle special cases not in the standard 2D mapping (like surface pressure)
+        if 'surface_pressure' not in geovals and 'sp' in model_ds:
+             geovals['surface_pressure'] = model_ds['sp'].values
+
+        return geovals
+
+
+    def compute_hofx(self, geovals, obs_space):
+        """
+        Computes H(x) - the Simulated Brightness Temperatures.
+        This uses the JEDI UFO Radiance operator + CRTM.
+        """
+        # 1. Initialize the UFO operator
+        hop = ufo.ObsOperator(obs_space, self.ufo_config)
+        
+        # 2. Container for simulated observations
+        hofx = ioda.ObsVector(obs_space)
+        
+        # 3. Simulate observations based on the GeoVaLs (model state)
+        hop.simulate_obs(geovals, hofx)
+        
+        return hofx
+
+
+class StabilityChecker:
+    """Checks the physical consistency of vertical atmospheric profiles."""
+
+    def __init__(self):
+        # Constants for meteorology
+        self.dry_lapse_rate = 0.0098  # K/m (approximate)
+        self.standard_levels = numpy.array(aidadic.crtm_standard_levels)
+
+    def check_static_stability(self, dataset):
+        """
+        Calculates the vertical temperature gradient (dT/dP).
+        In the troposphere, temperature should generally decrease with altitude.
+        """
+        # Ensure we are working with the correct variables via aidadic
+        temp_var = aidadic.jedi_anemoi_var_mapping.get('air_temperature')
+        
+        if temp_var not in dataset:
+            return None
+
+        # Calculate the derivative of Temperature with respect to Level
+        # In meteorology, we look for 'Stability' where d(Potential Temp)/dz > 0
+        temperatures = dataset[temp_var]
+        
+        # Simple check for negative temperature values (Kelvin check)
+        if (temperatures <= 0).any():
+            print("CRITICAL: Negative Kelvin values detected in profile.")
+            return False
+
+        # Check for extreme lapse rates between CRTM layers
+        # A jump of > 10K between adjacent layers in the 100-level grid is likely an interpolation error
+        temp_diff = temperatures.diff(dim='lev')
+        if (numpy.abs(temp_diff) > 10.0).any():
+            print("WARNING: Unphysical temperature jump detected between layers.")
+            return False
+
+        return True
+
+    def calculate_potential_temperature(self, dataset):
+        """Computes Potential Temperature (Theta) for stability analysis."""
+        # Mapping names via aidadic
+        t_name = aidadic.jedi_anemoi_var_mapping.get('air_temperature')
+        p_name = 'lev' # CRTM pressure levels
+        
+        # Standard formula: Theta = T * (P0 / P)^(R/Cp)
+        p0 = 1000.0  # Reference pressure in hPa
+        kappa = 0.286
+        
+        theta = dataset[t_name] * (p0 / dataset[p_name])**kappa
+        return theta
+
+
+class RadianceBiasManager:
+    """Handles Variational Bias Correction (VarBC) for satellite sensors."""
+
+    def __init__(self, conf):
+        self.conf = conf
+        self.bias_dir = os.path.join(self.conf.STATICDIR, "varbc")
+        self.predictors = ['constant', 'scan_angle', 'lapse_rate', 'clw']
+
+    def load_coefficients(self, sensor_id):
+        """Loads beta coefficients using full pandas name."""
+        coeff_file = os.path.join(self.bias_dir, f"{sensor_id}_coeffs.csv")
+        if os.path.exists(coeff_file):
+            return pandas.read_csv(coeff_file).set_index('channel')
+        else:
+            return None
+
+    def calculate_bias(self, sensor_id, channel_list, predictor_values):
+        """Computes bias using full numpy name."""
+        coeffs = self.load_coefficients(sensor_id)
+        if coeffs is None:
+            return numpy.zeros_like(predictor_values['constant'])
+
+        # Logic to apply coefficients to predictors...
+        pass
+
+
+
+class CloudMaskManager:
+    """Detects and filters cloud-contaminated satellite observations."""
+
+    def __init__(self, threshold_kelvin=2.5):
+        # Default threshold: reject if Obs is > 2.5K colder than Clear-Sky Background
+        self.threshold = threshold_kelvin
+
+    def detect_clouds_ir(self, observed_bt, simulated_bt):
+        """
+        Simple IR Window check: Cloud = (Obs - Sim) < -Threshold.
+        Infrared clouds are almost always colder than the surface.
+        """
+        innovation = observed_bt - simulated_bt
+        # Mask is True where it is CLEAR, False where it is CLOUDY
+        is_clear = innovation > -self.threshold
+        
+        return is_clear
+
+    def detect_clouds_mw(self, observed_bt, simulated_bt, scattering_index):
+        """
+        Microwave check using a Scattering Index (SI).
+        High SI values indicate ice scattering in convective clouds.
+        """
+        # Multi-test approach for Microwave
+        is_not_scattering = scattering_index < 10.0
+        is_not_raining = (observed_bt - simulated_bt) > -5.0
+        
+        return numpy.logical_and(is_not_scattering, is_not_raining)
+
+    def apply_mask(self, obs_dataset, clear_mask):
+        """Returns only the observations that passed the cloud test."""
+        return obs_dataset.where(clear_mask, drop=True)
+
+class VerticalInterpolator:
+    """Handles interpolation from coarse AI levels to CRTM standard layers."""
+    
+    def __init__(self):
+        # Always use the standard levels defined in aidadic
+        self.target_levels = np.array(aidadic.crtm_standard_levels)
+
+    def interpolate_field(self, source_p, data_array):
+        """Performs log-linear interpolation for meteorological profiles."""
+        # Using log-pressure for linear interpolation of T and Q
+        x_src = np.log(source_p)
+        x_tgt = np.log(self.target_levels)
+
+        f = interp1d(x_src, data_array, axis=0, kind='linear', 
+                     bounds_error=False, fill_value="extrapolate")
+        
+        return f(x_tgt)
+
+    def generate_geovals(self, model_ds):
+        """
+        Main entry point: Converts Anemoi state to JEDI GeoVaLs on CRTM levels.
+        """
+        # Dictionary to hold the interpolated high-res fields
+        geovals_ds = xr.Dataset(coords={'lev': self.target_levels})
+        
+        # Source pressure from Anemoi (e.g., 13 levels)
+        source_p = model_ds['lev'].values 
+
+        # Loop through mapping defined in aidadic
+        for jedi_var, anemoi_var in aidadic.jedi_anemoi_var_mapping.items():
+            if anemoi_var in model_ds:
+                # Interpolate from 13 levels -> 100 levels
+                interp_data = self.interpolate_field(source_p, model_ds[anemoi_var].values)
+                geovals_ds[jedi_var] = (('lev', 'lat', 'lon'), interp_data)
+                
+        return geovals_ds
+
+class RadiancePipeline(VerticalInterpolator, StabilityChecker, CloudMaskManager, RadianceBiasManager):
+    """
+    Orchestrator using Multiple Inheritance.
+    The pipeline IS an interpolator, a checker, etc.
+    """
+    # Import the classes into the class namespace
+
+    def __init__(self, conf, sensor_id):
+        # Initialize all parent classes
+        # This gives 'self' access to all their internal methods
+        VerticalInterpolator.__init__(self)
+        StabilityChecker.__init__(self)
+        CloudMaskManager.__init__(self, threshold_kelvin=2.0)
+        RadianceBiasManager.__init__(self, conf)
+        
+        self.conf = conf
+        self.sensor_id = sensor_id
+
+    def process_cycle(self, model_dataset, obs_dataset, radiance_observer):
+        """Executes the pipeline using direct method access."""
+        
+        # 1. Accessing method directly from self (inherited from VerticalInterpolator)
+        high_res_geovals = self.generate_geovals(model_dataset)
+
+        # 2. Accessing method directly from self (inherited from StabilityChecker)
+        if not self.check_static_stability(high_res_geovals):
+            raise ValueError(f"Stability check failed for {self.sensor_id}")
+        
+        # 3. Simulate Observations: H(x) via UFO/CRTM
+        # (Using the observer object we defined in dalib.py)
+        simulated_bt = radiance_observer.compute_hofx(high_res_geovals, obs_dataset)
+
+        # 4. Cloud Masking (Filtering out contaminated pixels)
+        observed_bt = obs_dataset.get_observations('brightness_temperature')
+        is_clear = self.detect_clouds_ir(observed_bt, simulated_bt)
+
+        # 5. Bias Correction (Applying VarBC)
+        # Assuming predictors are prepared within this step
+        predictors = self._prepare_predictors(model_dataset, obs_dataset)
+        bias_offset = self.calculate_bias(self.sensor_id, None, predictors)
+        
+        corrected_sim = simulated_bt + bias_offset
+
+        # 6. Final Result: Innovation (O - H(x)_corrected)
+        innovation = observed_bt - corrected_sim
+
+        return {
+            "innovation": innovation,
+            "mask": is_clear,
+            "simulated_bt": corrected_sim
+        }
+
+    def _prepare_predictors(self, model_ds, obs_ds):
+        """Internal helper to aggregate VarBC predictors."""
+        # Logic to extract scan angle, lapse rate, etc.
+        return {"constant": numpy.ones(len(obs_ds.locations))}
+
+
+class VariationalManager:
+    """Handles the mathematical core of the DA cycle (Cost Function J)."""
+    
+    @staticmethod
+    def compute_cost(analysis, background, obs, b_matrix_inv, r_matrix_inv):
+        """Calculates the JEDI variational cost function."""
+        # Logic for J(x) = (x-xb)T B-1 (x-xb) + (y-H(x))T R-1 (y-H(x))
+        pass
+
+    def apply_h_operator(self, state, obs_data):
+        """Maps model state to observation space (JEDI H-operator)."""
+        # This can delegate to UFOInterface but stays here for J(x) logic
+        pass
+
+
+class TimeManager:
+    """Utilities for DA windowing and time-cycling."""
+    
+    @staticmethod
+    def get_obs_window(cycle_time, hours=3):
+        """Calculates the start and end of the assimilation window."""
+        from datetime import timedelta
+        return cycle_time - timedelta(hours=hours), cycle_time + timedelta(hours=hours)
+
+class DataManager:
+    """Handles data conversion, I/O, and JEDI-binding."""
+
+    @staticmethod
+    def jedi_bind_state(state_data):
+        """Utility to convert AI tensors to JEDI-compatible State objects."""
+        return {"data": state_data, "metadata": "NCMRWF-AIESDA-v1"}
+
+    def write_ioda_surface_obs(self, output_path, lats, lons, values, errors, station_ids, var_name="air_temperature"):
+        """Isolated IODA writer encapsulating pyiodaconv dependencies."""
+        location_key_list = [("latitude", "float"), ("longitude", "float")]
+        writer = iodaconv.IodaWriter(output_path, location_key_list)
+
+        # 3. Format data dictionary with JEDI-specific HDF5 groups
+        data = {
+            (var_name, 'ObsValue'): values.astype('float32'),
+            (var_name, 'ObsError'): errors.astype('float32'),
+            ('latitude', 'MetaData'): lats.astype('float32'),
+            ('longitude', 'MetaData'): lons.astype('float32'),
+            ('station_id', 'MetaData'): numpy.array(station_ids, dtype=object),
+        }
+
+        # 4. Perform the write (HDF5/NetCDF)
+        writer.BuildIoda(data, {})
+        return os.path.abspath(output_path)
+
+
 """
 Public functions
 """
-
-def apply_h_operator(state, obs_data):
-    """Maps model state to observation space (JEDI H-operator)."""
-    # Moves the mapping logic out of the main job script
-    pass
-
-def compute_cost(analysis, background, obs, B_inv, R_inv):
-    """Calculates the JEDI variational cost function."""
-    # Logic for J(x)
-    pass
-
-def jedi_bind_state(state_data):
-    """Utility to convert AI tensors to JEDI-compatible State objects."""
-    return {"data": state_data, "metadata": "NCMRWF-AIESDA-v1"}
-
-
-def write_ioda_surface_obs(output_path, lats, lons, values, errors, station_ids, var_name="air_temperature"):
-    """
-    Isolated IODA writer. This function encapsulates all pyiodaconv dependencies.
-    """
-    # 1. Define location keys for MetaData
-    location_key_list = [("latitude", "float"), ("longitude", "float")]
-
-    # 2. Instantiate the isolated writer
-    writer = iodaconv.IodaWriter(output_path, location_key_list)
-
-    # 3. Format data dictionary with JEDI-specific HDF5 groups
-    data = {
-        (var_name, 'ObsValue'): values.astype('float32'),
-        (var_name, 'ObsError'): errors.astype('float32'),
-        ('latitude', 'MetaData'): lats.astype('float32'),
-        ('longitude', 'MetaData'): lons.astype('float32'),
-        ('station_id', 'MetaData'): np.array(station_ids, dtype=object),
-    }
-
-    # 4. Perform the write (HDF5/NetCDF)
-    writer.BuildIoda(data, {})
-    return os.path.abspath(output_path)
-
-def get_obs_window(cycle_time, hours=3):
-    """Utility for time logic, moved out of the main driver."""
-    from datetime import timedelta
-    return cycle_time - timedelta(hours=hours), cycle_time + timedelta(hours=hours)
 

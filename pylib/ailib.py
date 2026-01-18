@@ -29,122 +29,7 @@ import anemoi.datasets as anemoids
 import aidadic
 #import obsdic
 
-class AnemoiInterface:
-    """Interface for Anemoi ML-NWP models within aiesda."""
 
-    def __init__(self, model_path=None, device=None, config=None):
-        """
-        Initializes and loads the pre-trained weights.
-        This incorporates the logic formerly in load_ai_model.
-        """
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.config = config or {}
-        self.runner = None
-        # Initialize and load weights
-        if model_path:
-            print(f"Loading Anemoi model from {model_path} on {self.device}...")
-            self.model = self.runner.model.to(self.device)
-            self.model.eval()
-
-    def run_inference(self, input_tensor):
-        """
-        Performs the forward pass to get AI-forecast/analysis.
-        Centrally handles torch.no_grad() and device management.
-        """
-        # Ensure input is on the correct device
-        if isinstance(input_tensor, torch.Tensor):
-            input_tensor = input_tensor.to(self.device)
-            
-        with torch.no_grad():
-            return self.model(input_tensor)
-
-    def prepare_input(self, analysis_file, var_mapping=None):
-        """
-        Converts the JEDI/AIESDA analysis NetCDF into Anemoi input format.
-        
-        Args:
-            analysis_file (str): Path to the NetCDF file output by JEDI.
-            var_mapping (dict): JEDI to Anemoi mapping. 
-                                Default: {'air_temperature': '2t', 'eastward_wind': 'u10'}
-        """
-        if var_mapping is None:
-            var_mapping = aidadic.jedi_anemoi_var_mapping
-
-        ds = xarray.open_dataset(analysis_file)
-
-        # 1. Rename JEDI variables back to Anemoi/ECMWF short names
-        mapping_to_use = {k: v for k, v in var_mapping.items() if k in ds.variables}
-        ds_anemoi = ds.rename(mapping_to_use)
-
-        # 2. Data Integrity: Ensure time dimension exists (Anemoi expects a sequence)
-        if 'time' not in ds_anemoi.dims:
-            ds_anemoi = ds_anemoi.expand_dims('time')
-
-        print(f"Prepared JEDI analysis from {analysis_file} for Anemoi input.")
-        return ds_anemoi
-
-    def run_forecast(self, initial_state, steps=24):
-        """
-        Executes the forecast rollout.
-        initial_state: xarray dataset or torch tensor
-        steps: Number of auto-regressive rollout steps
-        """
-        with torch.no_grad():
-            # Anemoi handles the internal rollout logic
-            forecast = self.model.predict(initial_state, steps=steps)
-        return forecast
-
-    def rollout_forecast(self, analysis_nc, output_nc, lead_time_hours):
-        """
-        High-level Workflow Orchestrator.
-        Handles file I/O, variable renaming, and calls the engine.
-        """
-        # 1. Prepare (JEDI -> Anemoi naming)
-        input_data = self.prepare_input(analysis_nc)
-        
-        # 2. Execute (Calls the internal engine method)
-        forecast_ds = self.execute_anemoi_runner(
-            initial_state_ds=input_data, 
-            lead_time=lead_time_hours
-        )
-        
-        # 3. Save
-        forecast_ds.to_netcdf(output_nc)
-        return output_nc
-
-    def execute_anemoi_runner(self, initial_state_ds, lead_time=72, frequency="6h"):
-        """
-        Internal Inference Engine.
-        Directly wraps the anemoi.inference logic using the loaded runner.
-        """
-        print(f"Running Anemoi inference for {lead_time}h...")
-        forecast = self.runner.run(
-            initial_state=initial_state_ds,
-            lead_time=lead_time,
-            frequency=frequency
-        )
-        return forecast
-
-    def prepare_background_from_anemoi(self, zarr_path, target_time, output_nc):
-        """
-        Class-based background preparation. 
-        Reuses export_for_jedi to ensure consistent variable naming.
-        """
-        # 1. Open the Zarr dataset using Anemoi's dataset utility
-        ds = anemoids.open_dataset(zarr_path)
-        
-        # 2. Leverage the existing class function for transformation and export
-        return self.export_for_jedi(ds, output_nc, target_time)
-
-    def export_for_jedi(self, dataset, output_path, analysis_time, var_mapping=None):
-        """Converts Anemoi Xarray/Zarr output to JEDI-compliant NetCDF."""
-        if var_mapping is None:
-            var_mapping = {v: k for k, v in aidadic.jedi_anemoi_var_mapping.items()}
-
-        ds_at_time = dataset.sel(time=analysis_time)
-        ds_jedi = ds_at_time.rename({k: v for k, v in var_mapping.items() if k in ds_at_time.variables})
-        ds_jedi.to_netcdf(output_path)
-        return output_path
 
 class AtmosphericAutoencoder(tornn.Module):
     def __init__(self, input_channels=1, latent_dim=128):
@@ -218,6 +103,245 @@ class AtmosphericAutoencoder(tornn.Module):
 
         # Total Weighted Loss
         return mse_loss + (bg_weight * bg_constraint) + (physics_weight * tv_loss)
+
+class AnemoiInterface:
+    """Interface for Anemoi ML-NWP models within aiesda."""
+
+    def __init__(self, model_path=None, device=None, config=None):
+        """
+        Initializes and loads the pre-trained weights.
+        This incorporates the logic formerly in load_ai_model.
+        """
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.config = config or {}
+        self.runner = None
+        # Initialize and load weights
+        if model_path:
+            print(f"Loading Anemoi model from {model_path}...")
+            # FIX: Initialize the runner first
+            self.runner = anemoinfe.Runner(checkpoint=model_path)
+            # FIX: Extract model from the runner
+            self.model = self.runner.model.to(self.device)
+            self.model.eval()
+        else:
+            self.runner = None
+            self.model = None
+
+    def run_inference(self, input_tensor):
+        """
+        Performs the forward pass to get AI-forecast/analysis.
+        Centrally handles torch.no_grad() and device management.
+        """
+        # Ensure input is on the correct device
+        if isinstance(input_tensor, torch.Tensor):
+            input_tensor = input_tensor.to(self.device)
+            
+        with torch.no_grad():
+            return self.model(input_tensor)
+
+    def prepare_input(self, analysis_file, var_mapping=None):
+        """
+        Converts the JEDI/AIESDA analysis NetCDF into Anemoi input format.
+        
+        Args:
+            analysis_file (str): Path to the NetCDF file output by JEDI.
+            var_mapping (dict): JEDI to Anemoi mapping. 
+        """
+        if var_mapping is None:
+            var_mapping = aidadic.jedi_anemoi_var_mapping
+
+        ds = xarray.open_dataset(analysis_file)
+
+        # 1. Rename JEDI variables back to Anemoi/ECMWF short names
+        mapping_to_use = {k: v for k, v in var_mapping.items() if k in ds.variables}
+        ds_anemoi = ds.rename(mapping_to_use)
+
+        # 2. Data Integrity: Ensure time dimension exists (Anemoi expects a sequence)
+        if 'time' not in ds_anemoi.dims:
+            ds_anemoi = ds_anemoi.expand_dims('time')
+
+        print(f"Prepared JEDI analysis from {analysis_file} for Anemoi input.")
+        return ds_anemoi
+
+    def run_forecast(self, initial_state, steps=24):
+        """
+        Executes the forecast rollout.
+        initial_state: xarray dataset or torch tensor
+        steps: Number of auto-regressive rollout steps
+        """
+        with torch.no_grad():
+            # Anemoi handles the internal rollout logic
+            forecast = self.model.predict(initial_state, steps=steps)
+        return forecast
+
+    def rollout_forecast(self, analysis_nc, output_nc, lead_time_hours):
+        """Unified Rollout Orchestrator."""
+        # Preparation
+        input_data = self.prepare_input(analysis_nc)
+
+        # Inference using the internal runner
+        print(f"Executing {lead_time_hours}h rollout...")
+        forecast_ds = self.runner.run(
+            initial_state=input_data,
+            lead_time=lead_time_hours
+        )
+
+        forecast_ds.to_netcdf(output_nc)
+        return output_nc
+
+    def prepare_background_from_anemoi(self, zarr_path, target_time, output_nc):
+        """
+        Class-based background preparation. 
+        Reuses export_for_jedi to ensure consistent variable naming.
+        """
+        # 1. Open the Zarr dataset using Anemoi's dataset utility
+        ds = anemoids.open_dataset(zarr_path)
+        
+        # 2. Leverage the existing class function for transformation and export
+        return self.export_for_jedi(ds, output_nc, target_time)
+
+    def export_for_jedi(self, dataset, output_path, analysis_time, var_mapping=None):
+        """Converts Anemoi Xarray/Zarr output to JEDI-compliant NetCDF."""
+        if var_mapping is None:
+            var_mapping = {v: k for k, v in aidadic.jedi_anemoi_var_mapping.items()}
+
+        ds_at_time = dataset.sel(time=analysis_time)
+        ds_jedi = ds_at_time.rename({k: v for k, v in var_mapping.items() if k in ds_at_time.variables})
+        ds_jedi.to_netcdf(output_path)
+        return output_path
+
+
+
+class GraphCastInterface:
+    def __init__(self, config=None):
+        self.config = config if config else {}
+        # Reference levels from central dictionary
+        self.standard_levels = numpy.array(aidadic.graphcast_levels)
+
+    def prepare_state(self, raw_output):
+        """Standardizes GraphCast output using aidadic mapping."""
+        mapping = {v: k for k, v in aidadic.graphcast_jedi_var_mapping.items()}
+        standardized_ds = raw_output.rename(mapping)
+        
+        if 'level' in standardized_ds.coords:
+            standardized_ds = standardized_ds.rename({'level': 'lev'})
+            
+        return standardized_ds
+
+class FourCastNetInterface:
+    """
+    Interface to handle FourCastNet (AFNO) model states.
+    Optimized for the standard 13-level atmospheric profile.
+    """
+
+    def __init__(self, config=None):
+        self.config = config if config else {}
+        # Reference 13 levels from aidadic
+        self.levels = numpy.array(aidadic.fourcastnet_levels)
+        self.res = 0.25  # Standard horizontal resolution
+
+    def prepare_state(self, raw_output):
+        """
+        Standardizes FourCastNet output for dalib.
+        Handles renaming and coordinate alignment for 13 levels.
+        """
+        # Create reverse mapping: { 't': 'air_temperature' }
+        mapping = {v: k for k, v in aidadic.fourcastnet_jedi_var_mapping.items()}
+        
+        # Rename variables
+        standardized_ds = raw_output.rename(mapping)
+        
+        # Standardize vertical coordinate
+        if 'level' in standardized_ds.coords:
+            standardized_ds = standardized_ds.rename({'level': 'lev'})
+        elif 'pressure' in standardized_ds.coords:
+            standardized_ds = standardized_ds.rename({'pressure': 'lev'})
+
+        # Assign the aidadic levels to ensure floating point precision matches
+        standardized_ds['lev'] = self.levels
+        
+        return standardized_ds
+
+
+class PanguWeatherInterface:
+    """
+    Interface to handle Pangu-Weather model states.
+    Supports the 3D Earth-Specific Transformer output format.
+    """
+
+    def __init__(self, config=None):
+        self.config = config if config else {}
+        # Reference 13 levels from aidadic
+        self.levels = numpy.array(aidadic.pangu_levels)
+        self.res = 0.25
+
+    def prepare_state(self, raw_output):
+        """
+        Standardizes Pangu-Weather output.
+        - Maps variable names to JEDI standards.
+        - Ensures vertical coordinates are correctly labeled for dalib.
+        """
+        # Create reverse mapping: { 't': 'air_temperature' }
+        mapping = {v: k for k, v in aidadic.pangu_jedi_var_mapping.items()}
+        
+        # Rename variables and coordinate system
+        standardized_ds = raw_output.rename(mapping)
+        
+        # Pangu-Weather standard coordinate handling
+        if 'level' in standardized_ds.coords:
+            standardized_ds = standardized_ds.rename({'level': 'lev'})
+            
+        # Standardize units: Pangu Geopotential is often m^2/s^2 
+        # whereas some DA systems expect Geopotential Height (m)
+        if 'geopotential' in standardized_ds:
+            gravity = 9.80665
+            standardized_ds['geopotential_height'] = standardized_ds['geopotential'] / gravity
+
+        # Align pressure levels with aidadic
+        standardized_ds['lev'] = self.levels
+        
+        return standardized_ds
+
+
+class PrithviInterface:
+    """
+    Interface for NASA-IBM Prithvi WxC Foundation Model.
+    Designed to handle MERRA-2 based variables and flexible spatial grids.
+    """
+
+    def __init__(self, config=None):
+        self.config = config if config else {}
+        # Reference levels from aidadic (MERRA-2 standard)
+        self.levels = numpy.array(aidadic.prithvi_levels)
+        # Prithvi can vary resolution (e.g., 0.5 or 0.25), default to 0.5
+        self.res = self.config.get('res', 0.5)
+
+    def prepare_state(self, raw_output):
+        """
+        Standardizes Prithvi output for the JEDI pipeline.
+        - Translates MERRA-2 variable names (e.g., QV to specific_humidity).
+        - Standardizes vertical 'lev' coordinate.
+        """
+        # Map MERRA-2 names to JEDI standard names
+        mapping = {v: k for k, v in aidadic.prithvi_jedi_var_mapping.items()}
+        standardized_ds = raw_output.rename(mapping)
+
+        # Standardize coordinate names
+        if 'pressure' in standardized_ds.coords:
+            standardized_ds = standardized_ds.rename({'pressure': 'lev'})
+        elif 'level' in standardized_ds.coords:
+            standardized_ds = standardized_ds.rename({'level': 'lev'})
+
+        # Assign centralized levels to avoid precision issues
+        # Prithvi outputs might contain a subset, so we ensure alignment
+        if len(standardized_ds.lev) == len(self.levels):
+            standardized_ds['lev'] = self.levels
+            
+        return standardized_ds
+
+
+
+
 
 """
 Public functions
