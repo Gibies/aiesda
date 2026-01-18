@@ -294,6 +294,40 @@ class RadianceBiasManager:
 
 
 
+class CloudMaskManager:
+    """Detects and filters cloud-contaminated satellite observations."""
+
+    def __init__(self, threshold_kelvin=2.5):
+        # Default threshold: reject if Obs is > 2.5K colder than Clear-Sky Background
+        self.threshold = threshold_kelvin
+
+    def detect_clouds_ir(self, observed_bt, simulated_bt):
+        """
+        Simple IR Window check: Cloud = (Obs - Sim) < -Threshold.
+        Infrared clouds are almost always colder than the surface.
+        """
+        innovation = observed_bt - simulated_bt
+        # Mask is True where it is CLEAR, False where it is CLOUDY
+        is_clear = innovation > -self.threshold
+        
+        return is_clear
+
+    def detect_clouds_mw(self, observed_bt, simulated_bt, scattering_index):
+        """
+        Microwave check using a Scattering Index (SI).
+        High SI values indicate ice scattering in convective clouds.
+        """
+        # Multi-test approach for Microwave
+        is_not_scattering = scattering_index < 10.0
+        is_not_raining = (observed_bt - simulated_bt) > -5.0
+        
+        return numpy.logical_and(is_not_scattering, is_not_raining)
+
+    def apply_mask(self, obs_dataset, clear_mask):
+        """Returns only the observations that passed the cloud test."""
+        return obs_dataset.where(clear_mask, drop=True)
+
+
 """
 Public functions
 """
