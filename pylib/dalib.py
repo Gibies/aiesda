@@ -5,6 +5,8 @@ Created on Wed Jan 14 19:41:36 2026
 @author: gibies
 https://github.com/Gibies
 """
+import os
+import sys
 CURR_PATH=os.path.dirname(os.path.abspath(__file__))
 PKGHOME=os.path.dirname(CURR_PATH)
 OBSLIB=os.environ.get('OBSLIB',PKGHOME+"/pylib")
@@ -17,7 +19,6 @@ sys.path.append(OBSNML)
 """
 dalib.py
 """
-import os
 import numpy
 import xarray
 import ufo
@@ -212,6 +213,57 @@ class RadianceObserver:
         hop.simulate_obs(geovals, hofx)
         
         return hofx
+
+
+class StabilityChecker:
+    """Checks the physical consistency of vertical atmospheric profiles."""
+
+    def __init__(self):
+        # Constants for meteorology
+        self.dry_lapse_rate = 0.0098  # K/m (approximate)
+        self.standard_levels = numpy.array(aidadic.crtm_standard_levels)
+
+    def check_static_stability(self, dataset):
+        """
+        Calculates the vertical temperature gradient (dT/dP).
+        In the troposphere, temperature should generally decrease with altitude.
+        """
+        # Ensure we are working with the correct variables via aidadic
+        temp_var = aidadic.jedi_anemoi_var_mapping.get('air_temperature')
+        
+        if temp_var not in dataset:
+            return None
+
+        # Calculate the derivative of Temperature with respect to Level
+        # In meteorology, we look for 'Stability' where d(Potential Temp)/dz > 0
+        temperatures = dataset[temp_var]
+        
+        # Simple check for negative temperature values (Kelvin check)
+        if (temperatures <= 0).any():
+            print("CRITICAL: Negative Kelvin values detected in profile.")
+            return False
+
+        # Check for extreme lapse rates between CRTM layers
+        # A jump of > 10K between adjacent layers in the 100-level grid is likely an interpolation error
+        temp_diff = temperatures.diff(dim='lev')
+        if (numpy.abs(temp_diff) > 10.0).any():
+            print("WARNING: Unphysical temperature jump detected between layers.")
+            return False
+
+        return True
+
+    def calculate_potential_temperature(self, dataset):
+        """Computes Potential Temperature (Theta) for stability analysis."""
+        # Mapping names via aidadic
+        t_name = aidadic.jedi_anemoi_var_mapping.get('air_temperature')
+        p_name = 'lev' # CRTM pressure levels
+        
+        # Standard formula: Theta = T * (P0 / P)^(R/Cp)
+        p0 = 1000.0  # Reference pressure in hPa
+        kappa = 0.286
+        
+        theta = dataset[t_name] * (p0 / dataset[p_name])**kappa
+        return theta
 
 
 """
