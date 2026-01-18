@@ -327,6 +327,68 @@ class CloudMaskManager:
         """Returns only the observations that passed the cloud test."""
         return obs_dataset.where(clear_mask, drop=True)
 
+# In dapipe.py
+
+class RadiancePipeline(VerticalInterpolator, StabilityChecker, CloudMaskManager, RadianceBiasManager):
+    """
+    Orchestrator using Multiple Inheritance.
+    The pipeline IS an interpolator, a checker, etc.
+    """
+    # Import the classes into the class namespace
+    from dainterp import VerticalInterpolator
+    from daquality import StabilityChecker
+    from dafilter import CloudMaskManager
+    from dabias import RadianceBiasManager
+
+    def __init__(self, conf, sensor_id):
+        # Initialize all parent classes
+        # This gives 'self' access to all their internal methods
+        self.VerticalInterpolator.__init__(self)
+        self.StabilityChecker.__init__(self)
+        self.CloudMaskManager.__init__(self, threshold_kelvin=2.0)
+        self.RadianceBiasManager.__init__(self, conf)
+        
+        self.conf = conf
+        self.sensor_id = sensor_id
+
+    def process_cycle(self, model_dataset, obs_dataset, radiance_observer):
+        """Executes the pipeline using direct method access."""
+        
+        # 1. Accessing method directly from self (inherited from VerticalInterpolator)
+        high_res_geovals = self.generate_geovals(model_dataset)
+
+        # 2. Accessing method directly from self (inherited from StabilityChecker)
+        if not self.check_static_stability(high_res_geovals):
+            raise ValueError(f"Stability check failed for {self.sensor_id}")
+        
+        # 3. Simulate Observations: H(x) via UFO/CRTM
+        # (Using the observer object we defined in dalib.py)
+        simulated_bt = radiance_observer.compute_hofx(high_res_geovals, obs_dataset)
+
+        # 4. Cloud Masking (Filtering out contaminated pixels)
+        observed_bt = obs_dataset.get_observations('brightness_temperature')
+        is_clear = self.detect_clouds_ir(observed_bt, simulated_bt)
+
+        # 5. Bias Correction (Applying VarBC)
+        # Assuming predictors are prepared within this step
+        predictors = self._prepare_predictors(model_dataset, obs_dataset)
+        bias_offset = self.calculate_bias(self.sensor_id, None, predictors)
+        
+        corrected_sim = simulated_bt + bias_offset
+
+        # 6. Final Result: Innovation (O - H(x)_corrected)
+        innovation = observed_bt - corrected_sim
+
+        return {
+            "innovation": innovation,
+            "mask": is_clear,
+            "simulated_bt": corrected_sim
+        }
+
+    def _prepare_predictors(self, model_ds, obs_ds):
+        """Internal helper to aggregate VarBC predictors."""
+        # Logic to extract scan angle, lapse rate, etc.
+        return {"constant": numpy.ones(len(obs_ds.locations))}
 
 """
 Public functions
