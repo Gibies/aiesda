@@ -41,3 +41,73 @@ crtm_standard_levels = [
     601.6293, 623.2532, 645.3121, 667.8038, 690.7259, 714.0754, 737.8491, 762.0431, 786.6534, 811.6754,
     837.1041, 862.9340, 889.1593, 915.7741, 942.7719, 970.1462, 997.8900, 1025.9961, 1054.4563, 1083.2625
 ]
+
+# CRTM Standard 100 Levels for GeoVaLs
+#crtm_standard_levels = numpy.linspace(0.005, 1013.25, 100).tolist()
+
+# GraphCast Standard 37 Pressure Levels (hPa)
+graphcast_levels = [
+    1, 2, 3, 5, 7, 10, 20, 30, 50, 70, 100, 125, 150, 175, 200, 225, 250,
+    300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 775, 800, 825, 850,
+    875, 900, 925, 950, 975, 1000
+]
+
+# Variable Mapping for GraphCast
+graphcast_jedi_var_mapping = {
+    "air_temperature": "t",
+    "specific_humidity": "q",
+    "eastward_wind": "u",
+    "northward_wind": "v",
+    "geopotential": "z",
+}
+
+# FourCastNet standard 13 Pressure Levels (hPa)
+fourcastnet_levels = [
+    50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000
+]
+
+# Variable Mapping for FourCastNet (ERA5 naming style)
+fourcastnet_jedi_var_mapping = {
+    "air_temperature": "t",
+    "specific_humidity": "q",
+    "eastward_wind": "u",
+    "northward_wind": "v",
+    "geopotential": "z",
+    "surface_pressure": "sp",
+}
+
+
+# Pangu-Weather standard 13 Pressure Levels (hPa)
+pangu_levels = [
+    50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000
+]
+
+# Variable Mapping for Pangu-Weather
+# Pangu often outputs variables in a specific order (Z, Q, T, U, V)
+pangu_jedi_var_mapping = {
+    "air_temperature": "t",
+    "specific_humidity": "q",
+    "eastward_wind": "u",
+    "northward_wind": "v",
+    "geopotential": "z",
+    "mean_sea_level_pressure": "msl",
+}
+
+# Prithvi WxC / MERRA-2 Standard Pressure Levels (hPa)
+prithvi_levels = [
+    1, 2, 3, 5, 7, 10, 20, 30, 50, 70, 100, 125, 150, 175, 200, 225, 250, 
+    300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 775, 800, 825, 850, 
+    875, 900, 925, 950, 975, 1000
+]
+
+# Variable Mapping for Prithvi WxC (MERRA-2 style)
+prithvi_jedi_var_mapping = {
+    "air_temperature": "T",
+    "specific_humidity": "QV",
+    "eastward_wind": "U",
+    "northward_wind": "V",
+    "geopotential_height": "H",
+    "surface_pressure": "PS",
+}
+
+

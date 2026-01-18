@@ -29,6 +29,81 @@ import anemoi.datasets as anemoids
 import aidadic
 #import obsdic
 
+
+
+class AtmosphericAutoencoder(tornn.Module):
+    def __init__(self, input_channels=1, latent_dim=128):
+        super(AtmosphericAutoencoder, self).__init__()
+        # Encoder: Compresses the atmospheric grid
+        self.encoder = tornn.Sequential(
+            tornn.Conv2d(input_channels, 32, kernel_size=3, stride=2, padding=1),
+            tornn.ReLU(),
+            tornn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+            tornn.ReLU(),
+            tornn.Flatten(),
+            tornn.Linear(64 * 16 * 16, latent_dim) # Adjust based on grid size
+        )
+        # Decoder: Reconstructs the full model state
+        self.decoder = tornn.Sequential(
+            tornn.Linear(latent_dim, 64 * 16 * 16),
+            tornn.Unflatten(1, (64, 16, 16)),
+            tornn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
+            tornn.ReLU(),
+            tornn.ConvTranspose2d(32, input_channels, kernel_size=4, stride=2, padding=1),
+            tornn.Sigmoid() 
+        )
+
+    def forward(self, x):
+        latent = self.encoder(x)
+        reconstruction = self.decoder(latent)
+        return reconstruction, latent
+
+    
+    def calculate_variational_cost(x_analysis, x_background, observations, obs_operator, B_inv, R_inv):
+        """
+        Standard Variational Cost Function:
+        J(x) = (x - xb)^T B^-1 (x - xb) + (y - H(x))^T R^-1 (y - H(x))
+        """
+        # Background term (Difference from first guess)
+        bg_diff = x_analysis - x_background
+        J_b = 0.5 * torch.matmul(torch.matmul(bg_diff.T, B_inv), bg_diff)
+    
+        # Observation term (Difference from actual satellite/station data)
+        # H(x) is the observation operator (often a neural network in aiesda)
+        h_x = obs_operator(x_analysis) 
+        obs_diff = observations - h_x
+        J_o = 0.5 * torch.matmul(torch.matmul(obs_diff.T, R_inv), obs_diff)
+        return J_b + J_o
+    
+    def aiesda_loss(pred, target, background, physics_weight=0.1, bg_weight=0.5):
+        """
+        AIESDA Custom Loss Function.
+    
+        Args:
+            pred (torch.Tensor): The AI model's output (analysis/forecast).
+            target (torch.Tensor): The 'Truth' or high-quality analysis.
+            background (torch.Tensor): The JEDI background (First Guess).
+            physics_weight (float): Weight for the Smoothness/TV penalty.
+            bg_weight (float): Weight for the Background constraint (DA-like regularization).
+            By adding the bg_constraint (background error), the model learns 
+            to stay within the "physical manifold" defined by the JEDI First Guess.
+        """
+        # 1. Standard Reconstruction Loss (MSE) - Accuracy against truth
+        mse_loss = tornnfunc.mse_loss(pred, target)
+
+        # 2. Background Constraint (JEDI-Consistency)
+        # This prevents the AI from straying too far from the physical 'First Guess'
+        bg_constraint = tornnfunc.mse_loss(pred, background)
+
+        # 3. Physics Constraint (Total Variation)
+        # Penalizes sharp, unphysical noise in the prediction
+        diff_i = torch.pow(pred[:, :, 1:, :] - pred[:, :, :-1, :], 2).sum()
+        diff_j = torch.pow(pred[:, :, :, 1:] - pred[:, :, :, :-1], 2).sum()
+        tv_loss = diff_i + diff_j
+
+        # Total Weighted Loss
+        return mse_loss + (bg_weight * bg_constraint) + (physics_weight * tv_loss)
+
 class AnemoiInterface:
     """Interface for Anemoi ML-NWP models within aiesda."""
 
@@ -135,78 +210,138 @@ class AnemoiInterface:
         ds_jedi.to_netcdf(output_path)
         return output_path
 
-class AtmosphericAutoencoder(tornn.Module):
-    def __init__(self, input_channels=1, latent_dim=128):
-        super(AtmosphericAutoencoder, self).__init__()
-        # Encoder: Compresses the atmospheric grid
-        self.encoder = tornn.Sequential(
-            tornn.Conv2d(input_channels, 32, kernel_size=3, stride=2, padding=1),
-            tornn.ReLU(),
-            tornn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
-            tornn.ReLU(),
-            tornn.Flatten(),
-            tornn.Linear(64 * 16 * 16, latent_dim) # Adjust based on grid size
-        )
-        # Decoder: Reconstructs the full model state
-        self.decoder = tornn.Sequential(
-            tornn.Linear(latent_dim, 64 * 16 * 16),
-            tornn.Unflatten(1, (64, 16, 16)),
-            tornn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
-            tornn.ReLU(),
-            tornn.ConvTranspose2d(32, input_channels, kernel_size=4, stride=2, padding=1),
-            tornn.Sigmoid() 
-        )
 
-    def forward(self, x):
-        latent = self.encoder(x)
-        reconstruction = self.decoder(latent)
-        return reconstruction, latent
 
-    
-    def calculate_variational_cost(x_analysis, x_background, observations, obs_operator, B_inv, R_inv):
+class GraphCastInterface:
+    def __init__(self, config=None):
+        self.config = config if config else {}
+        # Reference levels from central dictionary
+        self.standard_levels = numpy.array(aidadic.graphcast_levels)
+
+    def prepare_state(self, raw_output):
+        """Standardizes GraphCast output using aidadic mapping."""
+        mapping = {v: k for k, v in aidadic.graphcast_jedi_var_mapping.items()}
+        standardized_ds = raw_output.rename(mapping)
+        
+        if 'level' in standardized_ds.coords:
+            standardized_ds = standardized_ds.rename({'level': 'lev'})
+            
+        return standardized_ds
+
+class FourCastNetInterface:
+    """
+    Interface to handle FourCastNet (AFNO) model states.
+    Optimized for the standard 13-level atmospheric profile.
+    """
+
+    def __init__(self, config=None):
+        self.config = config if config else {}
+        # Reference 13 levels from aidadic
+        self.levels = numpy.array(aidadic.fourcastnet_levels)
+        self.res = 0.25  # Standard horizontal resolution
+
+    def prepare_state(self, raw_output):
         """
-        Standard Variational Cost Function:
-        J(x) = (x - xb)^T B^-1 (x - xb) + (y - H(x))^T R^-1 (y - H(x))
+        Standardizes FourCastNet output for dalib.
+        Handles renaming and coordinate alignment for 13 levels.
         """
-        # Background term (Difference from first guess)
-        bg_diff = x_analysis - x_background
-        J_b = 0.5 * torch.matmul(torch.matmul(bg_diff.T, B_inv), bg_diff)
-    
-        # Observation term (Difference from actual satellite/station data)
-        # H(x) is the observation operator (often a neural network in aiesda)
-        h_x = obs_operator(x_analysis) 
-        obs_diff = observations - h_x
-        J_o = 0.5 * torch.matmul(torch.matmul(obs_diff.T, R_inv), obs_diff)
-        return J_b + J_o
-    
-    def aiesda_loss(pred, target, background, physics_weight=0.1, bg_weight=0.5):
+        # Create reverse mapping: { 't': 'air_temperature' }
+        mapping = {v: k for k, v in aidadic.fourcastnet_jedi_var_mapping.items()}
+        
+        # Rename variables
+        standardized_ds = raw_output.rename(mapping)
+        
+        # Standardize vertical coordinate
+        if 'level' in standardized_ds.coords:
+            standardized_ds = standardized_ds.rename({'level': 'lev'})
+        elif 'pressure' in standardized_ds.coords:
+            standardized_ds = standardized_ds.rename({'pressure': 'lev'})
+
+        # Assign the aidadic levels to ensure floating point precision matches
+        standardized_ds['lev'] = self.levels
+        
+        return standardized_ds
+
+
+class PanguWeatherInterface:
+    """
+    Interface to handle Pangu-Weather model states.
+    Supports the 3D Earth-Specific Transformer output format.
+    """
+
+    def __init__(self, config=None):
+        self.config = config if config else {}
+        # Reference 13 levels from aidadic
+        self.levels = numpy.array(aidadic.pangu_levels)
+        self.res = 0.25
+
+    def prepare_state(self, raw_output):
         """
-        AIESDA Custom Loss Function.
-    
-        Args:
-            pred (torch.Tensor): The AI model's output (analysis/forecast).
-            target (torch.Tensor): The 'Truth' or high-quality analysis.
-            background (torch.Tensor): The JEDI background (First Guess).
-            physics_weight (float): Weight for the Smoothness/TV penalty.
-            bg_weight (float): Weight for the Background constraint (DA-like regularization).
-            By adding the bg_constraint (background error), the model learns 
-            to stay within the "physical manifold" defined by the JEDI First Guess.
+        Standardizes Pangu-Weather output.
+        - Maps variable names to JEDI standards.
+        - Ensures vertical coordinates are correctly labeled for dalib.
         """
-        # 1. Standard Reconstruction Loss (MSE) - Accuracy against truth
-        mse_loss = tornnfunc.mse_loss(pred, target)
+        # Create reverse mapping: { 't': 'air_temperature' }
+        mapping = {v: k for k, v in aidadic.pangu_jedi_var_mapping.items()}
+        
+        # Rename variables and coordinate system
+        standardized_ds = raw_output.rename(mapping)
+        
+        # Pangu-Weather standard coordinate handling
+        if 'level' in standardized_ds.coords:
+            standardized_ds = standardized_ds.rename({'level': 'lev'})
+            
+        # Standardize units: Pangu Geopotential is often m^2/s^2 
+        # whereas some DA systems expect Geopotential Height (m)
+        if 'geopotential' in standardized_ds:
+            gravity = 9.80665
+            standardized_ds['geopotential_height'] = standardized_ds['geopotential'] / gravity
 
-        # 2. Background Constraint (JEDI-Consistency)
-        # This prevents the AI from straying too far from the physical 'First Guess'
-        bg_constraint = tornnfunc.mse_loss(pred, background)
+        # Align pressure levels with aidadic
+        standardized_ds['lev'] = self.levels
+        
+        return standardized_ds
 
-        # 3. Physics Constraint (Total Variation)
-        # Penalizes sharp, unphysical noise in the prediction
-        diff_i = torch.pow(pred[:, :, 1:, :] - pred[:, :, :-1, :], 2).sum()
-        diff_j = torch.pow(pred[:, :, :, 1:] - pred[:, :, :, :-1], 2).sum()
-        tv_loss = diff_i + diff_j
 
-        # Total Weighted Loss
-        return mse_loss + (bg_weight * bg_constraint) + (physics_weight * tv_loss)
+class PrithviInterface:
+    """
+    Interface for NASA-IBM Prithvi WxC Foundation Model.
+    Designed to handle MERRA-2 based variables and flexible spatial grids.
+    """
+
+    def __init__(self, config=None):
+        self.config = config if config else {}
+        # Reference levels from aidadic (MERRA-2 standard)
+        self.levels = numpy.array(aidadic.prithvi_levels)
+        # Prithvi can vary resolution (e.g., 0.5 or 0.25), default to 0.5
+        self.res = self.config.get('res', 0.5)
+
+    def prepare_state(self, raw_output):
+        """
+        Standardizes Prithvi output for the JEDI pipeline.
+        - Translates MERRA-2 variable names (e.g., QV to specific_humidity).
+        - Standardizes vertical 'lev' coordinate.
+        """
+        # Map MERRA-2 names to JEDI standard names
+        mapping = {v: k for k, v in aidadic.prithvi_jedi_var_mapping.items()}
+        standardized_ds = raw_output.rename(mapping)
+
+        # Standardize coordinate names
+        if 'pressure' in standardized_ds.coords:
+            standardized_ds = standardized_ds.rename({'pressure': 'lev'})
+        elif 'level' in standardized_ds.coords:
+            standardized_ds = standardized_ds.rename({'level': 'lev'})
+
+        # Assign centralized levels to avoid precision issues
+        # Prithvi outputs might contain a subset, so we ensure alignment
+        if len(standardized_ds.lev) == len(self.levels):
+            standardized_ds['lev'] = self.levels
+            
+        return standardized_ds
+
+
+
+
 
 """
 Public functions
