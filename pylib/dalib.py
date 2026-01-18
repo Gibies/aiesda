@@ -370,10 +370,6 @@ class RadiancePipeline(VerticalInterpolator, StabilityChecker, CloudMaskManager,
     The pipeline IS an interpolator, a checker, etc.
     """
     # Import the classes into the class namespace
-    import VerticalInterpolator
-    import StabilityChecker
-    import CloudMaskManager
-    import RadianceBiasManager
 
     def __init__(self, conf, sensor_id):
         # Initialize all parent classes
