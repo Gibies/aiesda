@@ -343,10 +343,10 @@ class RadiancePipeline(VerticalInterpolator, StabilityChecker, CloudMaskManager,
     def __init__(self, conf, sensor_id):
         # Initialize all parent classes
         # This gives 'self' access to all their internal methods
-        self.VerticalInterpolator.__init__(self)
-        self.StabilityChecker.__init__(self)
-        self.CloudMaskManager.__init__(self, threshold_kelvin=2.0)
-        self.RadianceBiasManager.__init__(self, conf)
+        VerticalInterpolator.__init__(self)
+        StabilityChecker.__init__(self)
+        CloudMaskManager.__init__(self, threshold_kelvin=2.0)
+        RadianceBiasManager.__init__(self, conf)
         
         self.conf = conf
         self.sensor_id = sensor_id
