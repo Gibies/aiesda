@@ -99,4 +99,38 @@ class AssimilationValidator:
         plt.close()
         return save_path
 
+    def check_temporal_consistency(self, current_analysis_file, previous_forecast_file, threshold=2.0):
+        """
+        Validates the transition between cycles.
+        Compares Analysis(T) with Forecast(T-6) valid at T.
+        """
+        ds_an = xr.open_dataset(current_analysis_file)
+        ds_fc_prev = xr.open_dataset(previous_forecast_file)
+
+        # Calculate the 'Jump' (Analysis - Background from previous cycle)
+        jump = ds_an - ds_fc_prev
+        
+        # Calculate RMS of the jump across the grid
+        rms_jump = np.sqrt((jump**2).mean())
+        
+        # Alert if the jump exceeds a physical threshold (e.g., 2 Kelvin for Temp)
+        alerts = []
+        for var in jump.data_vars:
+            val = rms_jump[var].values
+            if val > threshold:
+                alerts.append(f"WARNING: High temporal jump in {var}: {val:.4f}")
+        
+        return jump, alerts
+
+    def plot_temporal_tendency(self, jump_ds, var_name):
+        """Visualizes the spatial distribution of the cycle-to-cycle jump."""
+        plt.figure(figsize=(10, 6))
+        jump_ds[var_name].plot(cmap='seismic', robust=True)
+        plt.title(f"Temporal Jump (Analysis $T_0$ - Forecast $T_{-6}$): {var_name}")
+        
+        save_path = os.path.join(self.plot_dir, f"temporal_jump_{var_name}.png")
+        plt.savefig(save_path)
+        plt.close()
+        return save_path
+
 
