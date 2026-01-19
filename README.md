@@ -7,7 +7,14 @@ AIESDA is a robust framework designed to bridge **AI Foundation Models** (GraphC
 * **JEDI Model Bridge**: Automated standardization of AI outputs for Observation Operators (CRTM/RTTOV).
 * **Unified Registry**: Centralized management of variable mappings and vertical grid fingerprints.
 
-🏗 System Architecture
+
+
+**The Multi-Factor Model Passport**
+
+#### Overview
+The **Model Passport** replaces fragile "if-else" logic with a rigorous verification system. Every dataset entering the assimilation cycle must pass a three-tier check to ensure scientific integrity and prevent JEDI solver crashes.
+
+🏗 ***System Architecture***
 AIESDA follows a decoupled architecture to ensure scalability:
 
 aidadic.py: The "Source of Truth" (Registry and Mappings).
@@ -20,6 +27,14 @@ dynlib/: Interfaces for Dynamical/Coupled Models.
 
 dalib/: Bridges for JEDI, CRTM, and RTTOV.
 
+#### The Three Tiers of Verification
+1. **Identity Factor**: Scans global metadata attributes for recognized source tags (e.g., `graphcast`, `bharat`).
+2. **Biometric Factor**: Compares the vertical pressure levels of the file against known "fingerprints" using `numpy.allclose`. This distinguishes between models sharing similar level counts.
+3. **Integrity Factor**:
+    * **Horizontal Resolution**: Validates the grid spacing (e.g., ensures a 0.25° model isn't processed as a 0.06° model).
+    * **Variable Completeness**: Ensures all required coupled fields (like SST for Bharat) are present.
+    * **Strict NaN Check**: Rejects data with null values to protect the DA solver.
+
 
 ## 🛠 Installation
 ```bash
@@ -29,7 +44,7 @@ pip install -r requirements.txt
 
 
 
-🚦 Quick Start
+🚦 ***Quick Start***
 Python
 
 import xarray
@@ -46,23 +61,6 @@ standard_ds = interface.prepare_state(ds)
 
 ---
 
-## 2. Project Wiki: The Model Passport System
-The Wiki should explain the **"Why"** and **"How"** of complex components.
-
-### Page Title: **The Multi-Factor Model Passport**
-
-#### Overview
-The **Model Passport** replaces fragile "if-else" logic with a rigorous verification system. Every dataset entering the assimilation cycle must pass a three-tier check to ensure scientific integrity and prevent JEDI solver crashes.
-
-
-
-#### The Three Tiers of Verification
-1. **Identity Factor**: Scans global metadata attributes for recognized source tags (e.g., `graphcast`, `bharat`).
-2. **Biometric Factor**: Compares the vertical pressure levels of the file against known "fingerprints" using `numpy.allclose`. This distinguishes between models sharing similar level counts.
-3. **Integrity Factor**:
-    * **Horizontal Resolution**: Validates the grid spacing (e.g., ensures a 0.25° model isn't processed as a 0.06° model).
-    * **Variable Completeness**: Ensures all required coupled fields (like SST for Bharat) are present.
-    * **Strict NaN Check**: Rejects data with null values to protect the DA solver.
 
 #### Adding a New Model to the Registry
 To register a new model, update the `MODEL_REGISTRY` in `aidadic.py`:
