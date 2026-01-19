@@ -27,6 +27,8 @@ from datetime import datetime, timedelta
 import ailib
 import dalib
 import yaml
+import mithuna
+import bharatfs
 import aidadic
 
 class AidaConfig:
@@ -46,9 +48,6 @@ class AidaConfig:
         # Automatic directory creation
         for path in [self.OBSDIR, self.GESDIR, self.OUTDIR]:
             os.makedirs(path, exist_ok=True)
-
-# DELETE: setup_environment(args)
-# DELETE: config_env(args)
 
 class BaseWorker:
     """Handles shared logging and file checking for all tasks."""
@@ -86,11 +85,55 @@ class Orchestrator:
         self.ai_engine = ailib.AnemoiInterface(
             model_path=self.full_config.get("model_ckpt")
         )
+        # Initialize the JEDI bridge
+        self.bridge = JEDIModelBridge(config=self.full_config)
 
     def start_production(self):
         """High-level loop over cycles."""
-        # Loop logic for multi-day windows using self.ai_engine
+        """Loop logic for multi-day windows using self.ai_engine """
+        """Loop through dates and bridge them to JEDI."""
+        # 1. Get standardized background from AI model
+        # background = self.bridge.prepare_jedi_background("raw_ai_output.nc")
+        
+        # 2. Pass background to JEDI UFO operator (via dalib)
+        # h_x = dalib.UFOInterface(...).simulate(background)
         pass
+
+
+class ModelFactory:
+    """
+    Orchestration Factory to route datasets to the correct 
+    NCMRWF or AI interface.
+    """
+    @staticmethod
+    def get_interface(ds, config=None):
+        model_name = ds.attrs.get('model_name', ds.attrs.get('source', '')).lower()
+        num_levels = len(ds.coords.get('level', ds.coords.get('lev', [])))
+
+        # 1. NCMRWF National Systems
+        if 'bharat' in model_name:
+            return bharat.BharatInterface(config=config)
+        
+        if 'mithuna' in model_name or 'midhuna' in model_name: # Handle legacy naming in files
+            return mithuna.MithunaInterface(config=config)
+
+        # 2. Global AI Foundation Models (ailib)
+        if num_levels == 37:
+            # Differentiate by variable names (MERRA-2 vs ERA5)
+            if 'T' in ds.variables: 
+                return ailib.PrithviInterface(config=config)
+            return ailib.GraphCastInterface(config=config)
+            
+        if num_levels == 13:
+            if 'z' in ds.variables: 
+                return ailib.PanguWeatherInterface(config=config)
+            return ailib.FourCastNetInterface(config=config)
+
+        # 3. Default to Anemoi if checkpoint is provided
+        if 'anemoi' in model_name:
+            return ailib.AnemoiInterface(config=config)
+
+        raise ValueError(f"Model Factory: Identification failed for {model_name} ({num_levels} levels).")
 
 
 

@@ -110,4 +110,34 @@ prithvi_jedi_var_mapping = {
     "surface_pressure": "PS",
 }
 
+# Mithuna standard pressure levels (hPa) - Example configuration
+mithuna_levels = [
+    10, 20, 30, 50, 70, 100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000
+]
 
+# Variable Mapping for Midhuna
+mithuna_jedi_var_mapping = {
+    "air_temperature": "temp",
+    "specific_humidity": "q",
+    "eastward_wind": "u",
+    "northward_wind": "v",
+    "geopotential_height": "gh",
+    "surface_pressure": "pres_sfc",
+}
+
+# Bharat Forecast System Pressure Levels (hPa)
+bharat_levels = [
+    # Example high-res levels
+    0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30, 50, 70, 100, 
+    150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000
+]
+
+# Variable Mapping for Bharat Forecast System
+bharat_jedi_var_mapping = {
+    "air_temperature": "air_temp",
+    "specific_humidity": "spfh",
+    "eastward_wind": "u_wind",
+    "northward_wind": "v_wind",
+    "geopotential_height": "geo_ht",
+    "surface_pressure": "sfc_pres",
+}
