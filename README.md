@@ -3,7 +3,7 @@
 AIESDA is a robust framework designed to bridge **AI Foundation Models** (GraphCast, Pangu-Weather, etc.) with **Dynamical Forecast Systems** (Bharat, Mithuna) and **Data Assimilation engines** like JEDI/UFO.
 
 
-🏗 ***System Architecture***
+##🏗 System Architecture
 AIESDA follows a decoupled architecture to ensure scalability:
 
 aidadic.py: The "Source of Truth" (Registry and Mappings).
