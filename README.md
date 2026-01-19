@@ -2,17 +2,6 @@
 
 AIESDA is a robust framework designed to bridge **AI Foundation Models** (GraphCast, Pangu-Weather, etc.) with **Dynamical Forecast Systems** (Bharat, Mithuna) and **Data Assimilation engines** like JEDI/UFO.
 
-## 🚀 Key Features
-* **Model Passport**: A zero-trust multi-factor authentication system for meteorological data.
-* **JEDI Model Bridge**: Automated standardization of AI outputs for Observation Operators (CRTM/RTTOV).
-* **Unified Registry**: Centralized management of variable mappings and vertical grid fingerprints.
-
-
-
-**The Multi-Factor Model Passport**
-
-#### Overview
-The **Model Passport** replaces fragile "if-else" logic with a rigorous verification system. Every dataset entering the assimilation cycle must pass a three-tier check to ensure scientific integrity and prevent JEDI solver crashes.
 
 🏗 ***System Architecture***
 AIESDA follows a decoupled architecture to ensure scalability:
@@ -26,6 +15,19 @@ ailib/: Interfaces for AI Foundation Models.
 dynlib/: Interfaces for Dynamical/Coupled Models.
 
 dalib/: Bridges for JEDI, CRTM, and RTTOV.
+
+## 🚀 Key Features
+* **Model Passport**: A zero-trust multi-factor authentication system for meteorological data.
+* **JEDI Model Bridge**: Automated standardization of AI outputs for Observation Operators (CRTM/RTTOV).
+* **Unified Registry**: Centralized management of variable mappings and vertical grid fingerprints.
+
+
+**The Multi-Factor Model Passport**
+
+#### Overview
+The **Model Passport** replaces fragile "if-else" logic with a rigorous verification system. Every dataset entering the assimilation cycle must pass a three-tier check to ensure scientific integrity and prevent JEDI solver crashes.
+
+
 
 #### The Three Tiers of Verification
 1. **Identity Factor**: Scans global metadata attributes for recognized source tags (e.g., `graphcast`, `bharat`).
