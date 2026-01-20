@@ -1,6 +1,6 @@
 # AIESDA: Artificial Intelligence based Earth System Data Assimilation
 
-***AIESDA*** is a robust framework designed to bridge **AI Foundation Models** (GraphCast, Pangu-Weather, etc.) with **Dynamical Forecast Systems** (Bharat, Mithuna) and **Data Assimilation engines** like JEDI/UFO.
+***AIESDA*** is a robust framework designed for **Data Assimilation engine** based on JEDI to bridge seamlessly with **Dynamical Forecast Systems** (Bharat, Mithuna) as well as **AI Foundation Models** (GraphCast, Pangu-Weather, etc.).
 
 
 ## 🏗 System Architecture
