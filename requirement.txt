@@ -1,0 +1,27 @@
+# --- Core Numerical & Data Handling ---
+numpy>=1.22.0
+pandas>=1.4.0
+scipy>=1.7.0
+xarray>=2022.3.0
+netCDF4>=1.5.0
+
+# --- Machine Learning & AI Frameworks ---
+# Adjust based on whether the project uses PyTorch or TensorFlow
+torch>=1.11.0
+torchvision>=0.12.0
+scikit-learn>=1.0.0
+
+# --- Meteorological & Geospatial Data ---
+# Used for GRIB/NetCDF processing and Earth system coordinates
+cfgrib>=0.9.10
+cartopy>=0.20.0
+pyproj>=3.3.0
+
+# --- Visualization ---
+matplotlib>=3.5.0
+seaborn>=0.11.0
+
+# --- Utilities ---
+pyyaml>=6.0
+tqdm>=4.64.0
+python-dotenv>=0.20.0
