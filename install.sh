@@ -15,7 +15,7 @@ echo "🐍 Upgrading pip and installing requirements..."
 python3 -m pip install --upgrade pip
 
 if [ -f "$REQUIREMENTS" ]; then
-    python3 -m pip install -r "$REQUIREMENTS"
+    python3 -m pip install --user -r "$REQUIREMENTS"
 else
     echo "⚠️  Warning: requirement.txt not found, skipping pip install."
 fi
@@ -36,6 +36,8 @@ cp -rp ${PROJECT_ROOT}/nml ${AIESDA_INSTALLED_ROOT}/
 cp -rp ${PROJECT_ROOT}/yaml ${AIESDA_INSTALLED_ROOT}/
 cp -rp ${PROJECT_ROOT}/jobs ${AIESDA_INSTALLED_ROOT}/
 ###########################################################
+
+sudo apt update && sudo apt install environment-modules -y
 
 # --- 4. Generate Environment Module ---
 mkdir -p $(dirname "${MODULE_FILE}")
