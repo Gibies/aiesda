@@ -18,15 +18,7 @@ AIESDA (Artificial Intelligence based Earth System Data Assimilation) is a next-
 ```bash
 git clone https://github.com/NCMRWF/aiesda.git
 cd aiesda
-
-# Upgrade pip first
-pip install --upgrade pip
-
-# Install the requirements
-pip install -r requirement.txt
-
-# Building the package
-python3 setup.py build --build-base /home/.....path....for...build..../aiesda_build
+./install.sh
 ```
 
 

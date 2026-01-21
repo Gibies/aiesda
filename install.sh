@@ -5,10 +5,20 @@ PROJECT_NAME="aiesda"
 PROJECT_ROOT=$(pwd)
 BUILD_DIR="${HOME}/build/${PROJECT_NAME}_build_${VERSION}"
 MODULE_FILE="${HOME}/modulefiles/${PROJECT_NAME}/${VERSION}"
+REQUIREMENTS="${PROJECT_ROOT}/requirement.txt"
 
 echo "🚀 Installing ${PROJECT_NAME} v${VERSION}..."
 
-# --- 2. Clean and Build ---
+# --- 2. Dependency Management ---
+echo "🐍 Upgrading pip and installing requirements..."
+python3 -m pip install --upgrade pip
+
+if [ -f "$REQUIREMENTS" ]; then
+    python3 -m pip install -r "$REQUIREMENTS"
+else
+    echo "⚠️  Warning: requirement.txt not found, skipping pip install."
+fi
+
 rm -rf "${BUILD_DIR}"
 python3 setup.py build --build-base "${BUILD_DIR}"
 
