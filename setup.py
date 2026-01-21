@@ -11,10 +11,10 @@ setup(
     package_dir={
         "aiesda.pylib": "pylib",
         "aiesda.pydic": "pydic",
-        "aiesda.scripts": "scripts"
-        "aiesda.jobs": "jobs"
-        "aiesda.nml": "nml"
-        "aiesda.yaml": "yaml"
+        "aiesda.scripts": "scripts",
+        "aiesda.jobs": "jobs",
+        "aiesda.nml": "nml",
+        "aiesda.yaml": "yaml",
     },
     # This handles the non-python files (yml, nml) if needed later
     include_package_data=True,
