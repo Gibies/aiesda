@@ -67,4 +67,14 @@ To register a new model, update the `MODEL_REGISTRY` in `aidadic.py`:
     "mapping": {"air_temperature": "t", ...}
 }
 ```
-***For more details, please visit [the wiki page](https://github.com/NCMRWF/aiesda/wiki)***
+
+### 🗺 **Documentation Navigation**
+
+[🏠 Home](https://github.com/NCMRWF/aiesda/wiki/Home)
+
+[🏗️ Architecture](https://github.com/NCMRWF/aiesda/wiki/Architecture)
+
+[🪜 Development Roadmap](https://github.com/NCMRWF/aiesda/wiki/Development-Roadmap)
+
+[🛠 Contribution Guide](https://github.com/NCMRWF/aiesda/wiki/Contribution-Guide)
+
