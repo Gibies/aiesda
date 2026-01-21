@@ -1,21 +1,30 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name="aiesda",
     version="0.1.0",
     description="Artificial Intelligence based Earth System Data Assimilation",
-    author="NCMRWF",
-    # Since your files are in the root, we list them as modules
-    py_modules=["ailib", "aidaconf", "aidadic", "dynlib"],
+    author="gibies",
+    # We define the sub-packages within the aiesda namespace
+    packages=["aiesda", "aiesda.dic", "aiesda.scripts"],
+    # We map those namespaces to your physical folder names
+    package_dir={
+        "aiesda": "pylib",
+        "aiesda.dic": "pydic",
+        "aiesda.scripts": "scripts"
+    },
+    # This handles the non-python files (yml, nml) if needed later
+    include_package_data=True,
     install_requires=[
         "numpy>=1.22.4",
-        "pandas>=1.5.0",
-        "xarray>=2022.3.0",
         "torch>=1.12.0",
         "pyyaml>=6.0",
+        "xarray",
+        "netCDF4"
         "matplotlib>=3.5.0",
         # Note: JEDI/SABER/NCAR components are usually 
         # provided by the HPC environment modules.
     ],
     python_requires=">=3.9",
 )
+
