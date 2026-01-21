@@ -1,6 +1,8 @@
 # AIESDA: Artificial Intelligence based Earth System Data Assimilation
 
-***AIESDA*** is a robust framework designed to bridge **AI Foundation Models** (GraphCast, Pangu-Weather, etc.) with **Dynamical Forecast Systems** (Bharat, Mithuna) and **Data Assimilation engines** like JEDI/UFO.
+AIESDA (Artificial Intelligence based Earth System Data Assimilation) is a next-generation framework designed to integrate AI Foundation Models into traditional Numerical Weather Prediction (NWP) and Data Assimilation (DA) workflows. The goal of this project is to provide Data Assimilation engine based on JEDI and to bridge it seamlessly with Dynamical Forecast Systems (Bharat, Mithuna) as well as cutting-edge AI Foundation Models (GraphCast, Pangu-Weather, etc.).
+
+![unnamed](https://github.com/user-attachments/assets/7028f2ae-f08e-4c39-bdf9-46bdbe2d9937)
 
 
 ## 🏗 System Architecture
@@ -19,26 +21,12 @@
 **scilib.py:** Scientific toolbox for validation, verification and evaluation
 
 ## 🚀 Key Features
-* **Model Passport**: A zero-trust multi-factor authentication system for meteorological data.
-* **JEDI Model Bridge**: Automated standardization of AI outputs for Observation Operators (CRTM/RTTOV).
-* **Unified Registry**: Centralized management of variable mappings and vertical grid fingerprints.
 
+**Modular and Object Oriented Design**
 
-**The Multi-Factor Model Passport**
+**Seperation of concern**
 
-#### Overview
-The **Model Passport** replaces fragile "if-else" logic with a rigorous verification system. Every dataset entering the assimilation cycle must pass a three-tier check to ensure scientific integrity and prevent JEDI solver crashes.
-
-
-
-#### The Three Tiers of Verification
-1. **Identity Factor**: Scans global metadata attributes for recognized source tags (e.g., `graphcast`, `bharat`).
-2. **Biometric Factor**: Compares the vertical pressure levels of the file against known "fingerprints" using `numpy.allclose`. This distinguishes between models sharing similar level counts.
-3. **Integrity Factor**:
-    * **Horizontal Resolution**: Validates the grid spacing (e.g., ensures a 0.25° model isn't processed as a 0.06° model).
-    * **Variable Completeness**: Ensures all required coupled fields (like SST for Mithuna) are present.
-    * **Strict NaN Check**: Rejects data with null values to protect the DA solver.
-
+**Model Passport Verification at the entry level of data**
 
 ## 🛠 Installation
 ```bash
