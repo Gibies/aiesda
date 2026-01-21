@@ -41,6 +41,8 @@ cp -rp ${PROJECT_ROOT}/jobs ${AIESDA_INSTALLED_ROOT}/
 
 sudo apt update && sudo apt install environment-modules -y
 source /usr/share/modules/init/bash
+echo "source /usr/share/modules/init/bash" >> ~/.bashrc
+echo "module use ~/modulefiles" >> ~/.bashrc
 
 # --- 4. Generate Environment Module ---
 mkdir -p $(dirname "${MODULE_FILE}")
