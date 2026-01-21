@@ -66,3 +66,16 @@ echo "✅ Installation Complete!"
 echo "   Module: ${PROJECT_NAME}/${VERSION}"
 echo "   All assets (nml, yaml, scripts) are now in the build path."
 echo "------------------------------------------------------------"
+
+###########################################################
+
+# --- 5. Testing Environment ---
+# 1. Load the environment
+module use ${HOME}/modulefiles
+module load aiesda/0.1.0
+
+# 2. Check variables
+echo $AIESDA_NML
+
+# 3. Check Python resolution
+python3 -c "import aidaconfy; print('Success! Path:', aidaconfy.__file__)"
