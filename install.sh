@@ -9,18 +9,28 @@ REQUIREMENTS="${PROJECT_ROOT}/requirement.txt"
 AIESDA_INSTALLED_ROOT="${BUILD_DIR}"
 
 # --- 2. Block Definition ---
-# These names must match the "# --- Name ---" headers in your requirement.txt
-NATIVE_BLOCKS=("Numerical & Data Handling" "Visualization" "AI & Deep Learning" "Meteorological Specifics" "Configuration & Logging" "AI & Earth System Modeling")
-COMPLEX_BLOCKS=("JEDI & SABER Stack" "NCAR Library")
+NATIVE_BLOCKS=(
+    "Numerical and Data Handling"
+    "Geospatial Visualization"
+    "AI and Deep Learning"
+    "Meteorological Specifics"
+    "Configuration and Logging Libraries"
+    "ECMWF Anemoi and Related Stack"
+)
 
-echo "🚀 Starting Block-Wise Installation for ${PROJECT_NAME} v${VERSION}..."
+COMPLEX_BLOCKS=(
+    "NCAR Legacy Graphics and I/O"
+    "JCSDA JEDI and Related Stack"
+)
 
-# Helper: Extract packages between markers
+echo "🚀 Starting Sequential Block-Wise Installation..."
+
+# Optimized Helper: Surgical extraction between markers
 get_req_block() {
     local block_name=$1
     if [ -f "$REQUIREMENTS" ]; then
-        # Extracts from the header until the next empty line or next header
-        sed -n "/# --- ${block_name} ---/,/^\s*$/p" "$REQUIREMENTS" | grep -v "^#" | grep -v "^$"
+        sed -n "/# === BLOCK: ${block_name} ===/,/# === END BLOCK ===/p" "$REQUIREMENTS" | \
+            sed "/# ===/d; /^#/d; /^\s*$/d; s/[[:space:]]*#.*//g"
     fi
 }
 
@@ -28,25 +38,23 @@ get_req_block() {
 echo "🐍 Upgrading pip..."
 python3 -m pip install --user --upgrade pip --break-system-packages
 
-# Install Native Blocks
 for block in "${NATIVE_BLOCKS[@]}"; do
     echo "📦 Installing block: [$block]..."
     PKGS=$(get_req_block "$block")
     if [ ! -z "$PKGS" ]; then
-        python3 -m pip install --user $PKGS --break-system-packages || echo "⚠️ Issues in $block"
+        python3 -m pip install --user $PKGS --break-system-packages
     fi
 done
 
-# Check Complex Blocks (JEDI/NCAR)
+# Check Complex Blocks
 DA_MISSING=0
 for block in "${COMPLEX_BLOCKS[@]}"; do
     echo "🔍 Checking complex block: [$block]..."
     PKGS=$(get_req_block "$block")
     for pkg in $PKGS; do
-        # Clean name for import check: removes py, versions, and whitespace
-        lib=$(echo $pkg | cut -d'=' -f1 | cut -d'>' -f1 | sed 's/py//' | tr -d '[:space:]')
+        lib=$(echo $pkg | sed 's/py//' | cut -d'=' -f1 | cut -d'>' -f1 | tr -d '[:space:]')
         if ! python3 -c "import $lib" &>/dev/null; then
-            echo "❌ $lib not found natively."
+            echo "❌ $lib not found."
             DA_MISSING=1
         fi
     done
@@ -54,8 +62,8 @@ done
 
 # --- 4. WSL/Laptop Docker Fallback ---
 if [ $DA_MISSING -eq 1 ]; then
-    echo "🐳 Complex libraries missing. Triggering Docker Build for Laptop/WSL..."
-    if command -v docker >/dev/null 2>&1; then
+    echo "🐳 Complex libraries missing. Building Docker Fallback..."
+    if command -v docker &>/dev/null; then
         cat << EOF > Dockerfile
 FROM jcsda/docker-gnu-openmpi-dev:latest
 WORKDIR /home/aiesda
@@ -70,7 +78,6 @@ EOF
 fi
 
 # --- 5. Build and Module Generation ---
-# (Same logic as before, ensuring your flat PYTHONPATH/PATH requirements)
 echo "🏗️ Building Python package..."
 rm -rf "${BUILD_DIR}"
 python3 setup.py build --build-base "${BUILD_DIR}"
@@ -84,15 +91,20 @@ done
 mkdir -p $(dirname "${MODULE_FILE}")
 cat << EOF > "${MODULE_FILE}"
 #%Module1.0
+## AIESDA v${VERSION}
+
+if { [is-loaded jedi] == 0 } {
+    module load jedi/1.5.0
+}
+
 set version      ${VERSION}
 set aiesda_root  ${AIESDA_INSTALLED_ROOT}
-module-whatis    "AIESDA Framework v${VERSION}"
-# Environment Variables
+
 setenv           AIESDA_VERSION  ${VERSION}
-setenv		 AIESDA_ROOT	 \$aiesda_root/lib/aiesda
+setenv           AIESDA_ROOT     \$aiesda_root/lib/aiesda
 setenv           AIESDA_NML      \$aiesda_root/lib/aiesda/nml
 setenv           AIESDA_YAML     \$aiesda_root/lib/aiesda/yaml
-# Prepend paths
+
 prepend-path     PYTHONPATH      \$aiesda_root/lib/aiesda/pylib
 prepend-path     PYTHONPATH      \$aiesda_root/lib/aiesda/pydic
 prepend-path     PATH            \$aiesda_root/lib/aiesda/scripts

@@ -50,18 +50,20 @@ anemoi-transform>=0.0.1
 # === END BLOCK ===
 
 # === BLOCK: NCAR Legacy Graphics and I/O ===
-# Note: These are legacy and best installed via Conda if native fails
 pynio
 pyngl
 # === END BLOCK ===
 
 # === BLOCK: JCSDA JEDI and Related Stack ===
-pyoops              # Object-Oriented Prediction System
-pyioda              # Interface for Observational Data Access
-pyufo               # Unified Forward Operator
-pysaber             # Background Error Representation (SABER)
-pyvader             # Variable Derivation
+pyoops              
+pyioda              
+pyufo               
+pysaber             
+pyvader             
 # === END BLOCK ===
+
+
+
 
 
 
