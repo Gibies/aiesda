@@ -1,5 +1,8 @@
 #!/bin/bash
-###########################################################
+# ==============================================================================
+# AIESDA Unified Installer (WSL/Laptop & HPC)
+# ==============================================================================
+
 # --- 1. Configuration ---
 VERSION="0.1.0"
 PROJECT_NAME="aiesda"
@@ -8,18 +11,7 @@ BUILD_DIR="${HOME}/build/${PROJECT_NAME}_build_${VERSION}"
 MODULE_FILE="${HOME}/modulefiles/${PROJECT_NAME}/${VERSION}"
 REQUIREMENTS="${PROJECT_ROOT}/requirement.txt"
 AIESDA_INSTALLED_ROOT="${BUILD_DIR}"
-###########################################################
 
-# --- 1. Pre-flight Checks (WSL Detection) ---
-IS_WSL=false
-if grep -qi "microsoft" /proc/version 2>/dev/null || grep -qi "wsl" /proc/sys/kernel/osrelease 2>/dev/null; then
-    IS_WSL=true
-    echo "💻 WSL Detected."
-fi
-
-###########################################################
-
-# --- 2. Block Definition ---
 NATIVE_BLOCKS=(
     "Numerical and Data Handling"
     "Geospatial Visualization"
@@ -33,13 +25,35 @@ COMPLEX_BLOCKS=(
     "NCAR Legacy Graphics and I/O"
     "JCSDA JEDI and Related Stack"
 )
+###########################################################
 
-echo "🚀 Starting Sequential Block-Wise Installation..."
+# --- 2. Pre-flight Checks (WSL & OS Detection) ---
+IS_WSL=false
+if grep -qi "microsoft" /proc/version 2>/dev/null || grep -qi "wsl" /proc/sys/kernel/osrelease 2>/dev/null; then
+    IS_WSL=true
+    echo "💻 WSL Detected."
+else
+    echo "🐧 Native Linux/HPC Detected."
+fi
+###########################################################
 
-# Helper: Extract packages between markers
+# --- 3. Self-Healing: Check for pip ---
+if ! command -v pip3 &> /dev/null; then
+    echo "python3-pip not found. Attempting to install..."
+    if [ "$IS_WSL" = true ]; then
+        echo "Please enter your password to install pip:"
+        sudo apt update && sudo apt install python3-pip -y
+    else
+        echo "❌ ERROR: pip3 is missing. Please contact your SysAdmin to install it."
+        exit 1
+    fi
+fi
+###########################################################
+
+# --- 4. Helper Function (With '&' Fix) ---
 get_req_block() {
     local block_name=$1
-    # Escape & for sed safety
+    # FIX: Escape ampersands for sed safety
     local escaped_name=$(echo "$block_name" | sed 's/&/\\&/g')
     if [ -f "$REQUIREMENTS" ]; then
         sed -n "/# === BLOCK: ${escaped_name} ===/,/# === END BLOCK ===/p" "$REQUIREMENTS" | \
@@ -48,19 +62,18 @@ get_req_block() {
 }
 ###########################################################
 
-# --- 3. Dependency Management Loop ---
+# --- 5. Installation Loop ---
 echo "🐍 Upgrading pip..."
 python3 -m pip install --user --upgrade pip --break-system-packages
 
 for block in "${NATIVE_BLOCKS[@]}"; do
     echo "📦 Installing block: [$block]..."
     PKGS=$(get_req_block "$block")
-    if [ ! -z "$PKGS" ]; then
-        python3 -m pip install --user $PKGS --break-system-packages
-    fi
+    [ ! -z "$PKGS" ] && python3 -m pip install --user $PKGS --break-system-packages
 done
+###########################################################
 
-# Check Complex Blocks
+# --- 6. Complex Block Verification ---
 DA_MISSING=0
 for block in "${COMPLEX_BLOCKS[@]}"; do
     echo "🔍 Checking complex block: [$block]..."
@@ -76,62 +89,42 @@ for block in "${COMPLEX_BLOCKS[@]}"; do
 done
 ###########################################################
 
-# --- 4. Complex Blocks Check ---
-DA_MISSING=0
-for block in "${COMPLEX_BLOCKS[@]}"; do
-    echo "🔍 Checking complex block: [$block]..."
-    PKGS=$(get_req_block "$block")
-    for pkg in $PKGS; do
-        lib=$(echo "$pkg" | sed 's/py//' | cut -d'=' -f1 | cut -d'>' -f1 | tr -d '[:space:]')
-        if ! python3 -c "import $lib" &>/dev/null; then
-            echo "❌ $lib not found."
-            DA_MISSING=1
-        fi
-    done
-done
-
-###########################################################
-
-# --- 5. Docker Fallback (Merged & Cleaned) ---
+# --- 7. Docker Fallback Logic ---
 if [ "$DA_MISSING" -eq 1 ]; then
-    echo "🐳 JEDI/Complex libraries missing."
+    echo "🐳 JEDI/Complex libraries missing. Checking Docker..."
     
-    if [ "$IS_WSL" = true ]; then
-        echo "🔍 Checking Docker Desktop integration..."
-        if ! docker ps &>/dev/null; then
-            echo "❌ Docker check failed! Ensure Docker Desktop is running and WSL Integration is enabled."
-            exit 1
-        fi
+    if ! command -v docker &>/dev/null; then
+        echo "❌ ERROR: Docker not found. JEDI is critical for AIESDA."
+        [ "$IS_WSL" = true ] && echo "👉 Enable 'WSL Integration' in Docker Desktop settings."
+        exit 1
     fi
 
-    if command -v docker &>/dev/null; then
-        echo "🏗️ Building JEDI-Enabled Docker Fallback..."
-        cat << 'EOF_DOCKER' > Dockerfile
+    if ! docker ps &>/dev/null; then
+        echo "❌ ERROR: Docker is installed but not running. Please start Docker Desktop."
+        exit 1
+    fi
+
+    echo "🏗️  Building JEDI-Enabled Docker Image..."
+    cat << 'EOF_DOCKER' > Dockerfile
 FROM jcsda/docker-gnu-openmpi-dev:latest
 WORKDIR /home/aiesda
 COPY requirement.txt .
 RUN pip3 install --no-cache-dir -r requirement.txt --break-system-packages
-ENV PYTHONPATH="/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:${PYTHONPATH}"
-ENV PATH="/home/aiesda/lib/aiesda/scripts:/home/aiesda/lib/aiesda/jobs:${PATH}"
+ENV PYTHONPATH="/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:\${PYTHONPATH}"
+ENV PATH="/home/aiesda/lib/aiesda/scripts:/home/aiesda/lib/aiesda/jobs:\${PATH}"
 EOF_DOCKER
 
-        docker build -t aiesda_jedi:latest .
-        
-        # Create the alias if it doesn't exist
-        if ! grep -q "aida-run" ~/.bashrc; then
-            echo "alias aida-run='docker run -it --rm -v \$(pwd):/home/aiesda aiesda_jedi:latest'" >> ~/.bashrc
-            echo "✅ Created 'aida-run' alias. Run 'source ~/.bashrc' after installation."
-        fi
-    else
-        echo "⚠️  Warning: JEDI is missing and Docker is not installed. DA components will not work."
+    docker build -t aiesda_jedi:latest .
+    
+    if ! grep -q "aida-run" ~/.bashrc; then
+        echo "alias aida-run='docker run -it --rm -v \$(pwd):/home/aiesda aiesda_jedi:latest'" >> ~/.bashrc
+        echo "✅ Created 'aida-run' alias."
     fi
 fi
-
-
 ###########################################################
 
-# --- 6. Build and Module Generation ---
-echo "🏗️ Building Python package..."
+# --- 8. Build & Module Generation ---
+echo "🏗️  Finalizing AIESDA Build..."
 rm -rf "${BUILD_DIR}"
 python3 setup.py build --build-base "${BUILD_DIR}"
 
@@ -145,19 +138,13 @@ mkdir -p $(dirname "${MODULE_FILE}")
 cat << EOF_MODULE > "${MODULE_FILE}"
 #%Module1.0
 ## AIESDA v${VERSION}
-
-if { [is-loaded jedi] == 0 } {
-    catch { module load jedi/1.5.0 }
-}
-
+if { [is-loaded jedi] == 0 } { catch { module load jedi/1.5.0 } }
 set version      ${VERSION}
 set aiesda_root  ${AIESDA_INSTALLED_ROOT}
-
 setenv           AIESDA_VERSION  \$version
 setenv           AIESDA_ROOT     \$aiesda_root/lib/aiesda
 setenv           AIESDA_NML      \$aiesda_root/lib/aiesda/nml
 setenv           AIESDA_YAML     \$aiesda_root/lib/aiesda/yaml
-
 prepend-path     PYTHONPATH      \$aiesda_root/lib/aiesda/pylib
 prepend-path     PYTHONPATH      \$aiesda_root/lib/aiesda/pydic
 prepend-path     PATH            \$aiesda_root/lib/aiesda/scripts
@@ -165,12 +152,13 @@ prepend-path     PATH            \$aiesda_root/lib/aiesda/jobs
 EOF_MODULE
 
 echo "------------------------------------------------------------"
-echo "✅ Installation Complete!"
-echo "   Module: ${PROJECT_NAME}/${VERSION}"
+echo "✅ Installation Complete! Run 'source ~/.bashrc' to activate."
 echo "------------------------------------------------------------"
+
+
 ###########################################################
 
-# --- 6. Testing Environment ---
+# --- 9. Testing Environment ---
 (
     [ -f /usr/share/modules/init/bash ] && source /usr/share/modules/init/bash
     if command -v module >/dev/null 2>&1; then
