@@ -10,6 +10,24 @@ REQUIREMENTS="${PROJECT_ROOT}/requirement.txt"
 AIESDA_INSTALLED_ROOT="${BUILD_DIR}"
 ###########################################################
 
+# --- Pre-flight Check: Docker for JEDI ---
+echo "🔍 Checking for Docker (Required for JEDI on Laptops)..."
+if ! command -v docker &> /dev/null; then
+    echo "❌ ERROR: Docker command not found."
+    echo "   Please install Docker Desktop on Windows and enable WSL Integration."
+    echo "   JEDI is CRITICAL and cannot be installed natively on this machine."
+    exit 1
+fi
+
+if ! docker ps &> /dev/null; then
+    echo "⚠️  WARNING: Docker is installed but not running."
+    echo "   Please start Docker Desktop on Windows and try again."
+    exit 1
+fi
+echo "✅ Docker detected and running."
+
+###########################################################
+
 # --- 2. Block Definition ---
 NATIVE_BLOCKS=(
     "Numerical and Data Handling"
