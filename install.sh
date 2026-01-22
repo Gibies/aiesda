@@ -5,7 +5,7 @@
 
 # --- 1. Configuration ---
 # Read version from central tracker; default to 'dev' if file missing
-VERSION=$(cat VERSION | tr -d '[:space:]' 2>/dev/null || echo "dev")
+VERSION=$(cat VERSION | tr -d '[:space:]' | sed 's/\.0\+/\./g') 2>/dev/null || echo "dev")
 PROJECT_NAME="aiesda"
 PROJECT_ROOT=$(pwd)
 BUILD_DIR="${HOME}/build/${PROJECT_NAME}_build_${VERSION}"
