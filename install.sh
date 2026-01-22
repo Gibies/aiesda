@@ -10,6 +10,7 @@ VERSION=${VERSION:-"dev"}  # If VERSION is empty or file missing, default to 'de
 PROJECT_NAME="aiesda"
 PROJECT_ROOT=$(pwd)
 BUILD_DIR="${HOME}/build/${PROJECT_NAME}_build_${VERSION}"
+BUILD_WORKSPACE="${HOME}/build/docker_build_tmp"
 MODULE_FILE="${HOME}/modulefiles/${PROJECT_NAME}/${VERSION}"
 REQUIREMENTS="${PROJECT_ROOT}/requirement.txt"
 AIESDA_INSTALLED_ROOT="${BUILD_DIR}"
@@ -146,7 +147,15 @@ if [ "$DA_MISSING" -eq 1 ] && [ "$IS_WSL" = true ]; then
         echo "✅ Docker image aiesda_jedi:${VERSION} already exists. Skipping build."
     else
         echo "🏗️  Building JEDI-Enabled Docker Image..."
-        cat << 'EOF_DOCKER' > Dockerfile
+        # Define a clean build workspace outside the repo
+        
+        mkdir -p "$BUILD_WORKSPACE"
+
+        # 1. Copy only the necessary requirement file to the workspace
+        cp requirement.txt "$BUILD_WORKSPACE/"
+
+        # 2. Generate the Dockerfile directly in the build area
+        cat << 'EOF_DOCKER' > "$BUILD_WORKSPACE/Dockerfile"
 FROM jcsda/docker-gnu-openmpi-dev:latest
 USER root
 
@@ -160,18 +169,17 @@ RUN if ! command -v python3 >/dev/null 2>&1; then \
 # Install system dependencies needed for some python wheels
 RUN apt-get update && apt-get install -y python3-pip libeccodes-dev && \
     rm -rf /var/lib/apt/lists/*
-ENV PATH="/usr/bin:/usr/local/bin:\${PATH}"
-WORKDIR /home/aiesda
-COPY requirement.txt .
-
-# 3. Use absolute path for pip install
-RUN /usr/bin/python3 -m pip install --no-cache-dir -r requirement.txt --break-system-packages
-
 # 4. Set environment for JEDI and AIESDA
 # We include both the site-packages for UFO and the local AIESDA paths
 ENV PYTHONPATH="/usr/local/lib/python3.12/dist-packages:/usr/local/lib:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:\${PYTHONPATH}"
 ENV LD_LIBRARY_PATH="/usr/local/lib:\${LD_LIBRARY_PATH}"
 ENV PATH="/usr/bin:/usr/local/bin:\${PATH}"
+
+WORKDIR /home/aiesda
+COPY requirement.txt .
+
+# 3. Use absolute path for pip install
+RUN /usr/bin/python3 -m pip install --no-cache-dir -r requirement.txt --break-system-packages
 
 # 5. Verification check during build
 # Use absolute path for the final verification
