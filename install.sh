@@ -92,18 +92,39 @@ done
 
 # --- 7. Docker Fallback Logic ---
 if [ "$DA_MISSING" -eq 1 ]; then
-    echo "🐳 JEDI/Complex libraries missing. Checking Docker..."
-    
+    echo "🐳 JEDI components missing. Checking Docker..."
+
+    # 1. Check if Docker is installed
     if ! command -v docker &>/dev/null; then
-        echo "❌ ERROR: Docker not found. JEDI is critical for AIESDA."
-        [ "$IS_WSL" = true ] && echo "👉 Enable 'WSL Integration' in Docker Desktop settings."
+        echo "❌ ERROR: Docker command not found. Please install Docker Desktop on Windows."
         exit 1
     fi
 
+    # 2. Try to start Docker if it's not running
     if ! docker ps &>/dev/null; then
-        echo "❌ ERROR: Docker is installed but not running. Please start Docker Desktop."
+        echo "🐋 Docker is not running. Attempting to start Docker Desktop..."
+        # Launch the Windows executable from WSL
+        "/mnt/c/Program Files/Docker/Docker/Docker Desktop.exe" &
+        
+        echo "⏳ Waiting for Docker to initialize (this may take a minute)..."
+        # Wait up to 60 seconds for Docker to become responsive
+        COUNT=0
+        while ! docker ps &>/dev/null && [ $COUNT -lt 12 ]; do
+            sleep 5
+            ((COUNT++))
+            echo "   ...still waiting ($((COUNT * 5))s)..."
+        done
+    fi
+
+    # 3. Final verification of the connection
+    if ! docker ps &>/dev/null; then
+        echo "❌ ERROR: Docker Desktop failed to start or WSL Integration is disabled."
+        echo "👉 Please manually open Docker Desktop -> Settings -> Resources -> WSL Integration"
+        echo "   and ensure 'Ubuntu' is toggled ON."
         exit 1
     fi
+
+    echo "✅ Docker is ready. "
 
     echo "🏗️  Building JEDI-Enabled Docker Image..."
     cat << 'EOF_DOCKER' > Dockerfile
