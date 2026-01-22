@@ -226,6 +226,9 @@ echo "------------------------------------------------------------"
             echo "📝 WSL/Laptop detected: Running Bridge Test via Docker..."
             # Use the newly built image to test if aidaconf can see UFO inside the container
             docker run --rm -v $(pwd):/home/aiesda aiesda_jedi:${VERSION} python3 -c "import ufo; import aidaconf; print('✅ Success! JEDI and AIESDA linked via Docker.')"
+            source ~/.bashrc
+            # Test the alias and the JEDI linkage
+            aida-run python3 -c "import ufo; import aidaconf; print('🚀 JEDI-AIESDA Bridge is Online!')"
         else
             echo "📝 Native/HPC detected: Running Native Test..."
             python3 -c "import aidaconf; print('✅ Success! aidaconf found natively.')"
