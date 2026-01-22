@@ -1,38 +1,30 @@
-# AIESDA: Artificial Intelligence based Earth System Data Assimilation
 
-AIESDA (Artificial Intelligence based Earth System Data Assimilation) is a next-generation framework designed to integrate AI Foundation Models into traditional Numerical Weather Prediction (NWP) and Data Assimilation (DA) workflows. The goal of this project is to provide Data Assimilation engine based on JEDI and to bridge it seamlessly with Dynamical Forecast Systems (Bharat, Mithuna) as well as cutting-edge AI Foundation Models (GraphCast, Pangu-Weather, etc.).
+# Artificial Intelligence based Earth System Data Assimilation (AIESDA)
+
+Welcome to the AIESDA Wiki
+
+AIESDA (Artificial Intelligence based Earth System Data Assimilation) is a next-generation framework designed to integrate AI Foundation Models into traditional Numerical Weather Prediction (NWP) and Data Assimilation (DA) workflows. The goal of this project is to provide **Data Assimilation engine** based on JEDI and to bridge it seamlessly with **Dynamical Forecast Systems** (Bharat, Mithuna) as well as cutting-edge **AI Foundation Models** (GraphCast, Pangu-Weather, etc.).
+
 
 ![unnamed](https://github.com/user-attachments/assets/7028f2ae-f08e-4c39-bdf9-46bdbe2d9937)
 
 
-## 🏗 System Architecture
-***AIESDA*** follows a decoupled architecture to ensure scalability:
-
-**aidadic.py:** The "Source of Truth" (Registry and Mappings).
-
-**aidaconf.py:** The Orchestrator (ModelPassport and workflow logic).
-
-**ailib.py:** Interfaces for AI Foundation Models.
-
-**dynlib.py:** Interfaces for Dynamical/Coupled Models.
-
-**dalib.py:** Bridges for JEDI (IODA, UFO, SABER, OOPS), CRTM, and RTTOV.
-
-**scilib.py:** Scientific toolbox for validation, verification and evaluation
-
-## 🚀 Key Features
+## 🚀 ***Key Features***
 
 **Modular and Object Oriented Design**
 
 **Seperation of concern**
 
-**Model Passport Verification at the entry level of data**
+**Entry Level Data Identity Verification**
+
+
 
 ## 🛠 Installation
 ```bash
-git clone [https://github.com/NCMRWF/aiesda.git](https://github.com/NCMRWF/aiesda.git)
+git clone https://github.com/NCMRWF/aiesda.git
 cd aiesda
-pip install -r requirements.txt
+./install.sh
+
 ```
 
 
@@ -52,7 +44,6 @@ interface = ModelPassport.identify(ds)
 # Standardize for JEDI
 standard_ds = interface.prepare_state(ds)
 
----
 ```
 
 ## 🛠 Adding a New Model to the Registry
@@ -67,3 +58,14 @@ To register a new model, update the `MODEL_REGISTRY` in `aidadic.py`:
     "mapping": {"air_temperature": "t", ...}
 }
 ```
+
+### 🗺 **Documentation Navigation**
+
+[🏠 Home](https://github.com/NCMRWF/aiesda/wiki/Home)
+
+[🏗️ Architecture](https://github.com/NCMRWF/aiesda/wiki/Architecture)
+
+[🪜 Development Roadmap](https://github.com/NCMRWF/aiesda/wiki/Development-Roadmap)
+
+[🛠 Contribution Guide](https://github.com/NCMRWF/aiesda/wiki/Contribution-Guide)
+
