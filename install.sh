@@ -130,19 +130,25 @@ echo "🏗️  Building JEDI-Enabled Docker Image..."
     cat << 'EOF_DOCKER' > Dockerfile
 FROM jcsda/docker-gnu-openmpi-dev:latest
 USER root
-RUN apt-get update && apt-get install -y python3-pip && rm -rf /var/lib/apt/lists/*
+
+# Install system dependencies needed for some python wheels
+RUN apt-get update && apt-get install -y python3-pip libeccodes-dev && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /home/aiesda
 COPY requirement.txt .
-RUN pip3 install --no-cache-dir -r requirement.txt --break-system-packages
-ENV PYTHONPATH="/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:\${PYTHONPATH}"
+
+# Install the AI and Data Stack
+RUN python3 -m pip install --no-cache-dir -r requirement.txt --break-system-packages
+
+# Set Paths: 1. Your AIESDA libs, 2. The internal JEDI python bindings
+ENV PYTHONPATH="/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:/usr/local/lib/python3.12/dist-packages:/usr/local/lib:\${PYTHONPATH}"
 ENV PATH="/home/aiesda/lib/aiesda/scripts:/home/aiesda/lib/aiesda/jobs:\${PATH}"
+
+# Verification check during build
+RUN python3 -c "import ufo; print('✅ JEDI UFO found inside container')"
 EOF_DOCKER
 
-    # Build with the specific version tag
-    docker build -t aiesda_jedi:${VERSION} .
-    
-    # ALSO tag it as 'latest' so the alias is always "future-proof"
-    docker tag aiesda_jedi:${VERSION} aiesda_jedi:latest
+    docker build -t aiesda_jedi:${VERSION} -t aiesda_jedi:latest .
 
     # Add the alias if it doesn't exist
     if ! grep -q "aida-run" ~/.bashrc; then
