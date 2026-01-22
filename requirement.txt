@@ -50,8 +50,8 @@ anemoi-transform>=0.0.1
 # === END BLOCK ===
 
 # === BLOCK: NCAR Legacy Graphics and InOut ===
-pynio
-pyngl
+#pynio
+#pyngl
 # === END BLOCK ===
 
 # === BLOCK: JCSDA JEDI and Related Stack ===
