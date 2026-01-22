@@ -55,14 +55,13 @@ anemoi-transform>=0.0.1
 # === END BLOCK ===
 
 # === BLOCK: JCSDA JEDI and Related Stack ===
-pyoops              
-pyioda              
-pyufo               
-pysaber             
-pyvader             
+# These are provided by the base Docker image environment
+# oops
+# ioda
+# ufo
+# saber
+# vader
 # === END BLOCK ===
-
-
 
 
 
