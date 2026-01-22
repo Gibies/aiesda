@@ -186,7 +186,8 @@ RUN /usr/bin/python3 -m pip install --no-cache-dir -r requirement.txt --break-sy
 RUN /usr/bin/python3 -c "import ufo; print('✅ JEDI UFO found inside container')"
 EOF_DOCKER
 
-        docker build -t aiesda_jedi:${VERSION} -t aiesda_jedi:latest .
+        docker build -t aiesda_jedi:${VERSION} -t aiesda_jedi:latest \
+                     -f "$BUILD_WORKSPACE/Dockerfile" "$BUILD_WORKSPACE"
     fi
     # Add the alias if it doesn't exist
     if ! grep -q "aida-run" ~/.bashrc; then
