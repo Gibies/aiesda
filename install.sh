@@ -75,23 +75,37 @@ done
 ###########################################################
 
 # --- 6. Complex Block Verification ---
-DA_MISSING=0
-for block in "${COMPLEX_BLOCKS[@]}"; do
-    echo "🔍 Checking complex block: [$block]..."
-    PKGS=$(get_req_block "$block")
-    for pkg in $PKGS; do
-        # Clean name for import check
-        lib=$(echo "$pkg" | sed 's/py//' | cut -d'=' -f1 | cut -d'>' -f1 | tr -d '[:space:]')
-        if ! python3 -c "import $lib" &>/dev/null; then
-            echo "❌ $lib not found."
-            DA_MISSING=1
-        fi
+# On WSL, we assume we need Docker (DA_MISSING=1)
+# On HPC, we will flip this to 0 if native libraries are found
+DA_MISSING=1
+
+if [ "$IS_WSL" = false ]; then
+    echo "🔍 Checking native DA components (HPC Mode)..."
+    DA_FOUND_COUNT=0
+    TOTAL_DA_PKGS=0
+    
+    for block in "${COMPLEX_BLOCKS[@]}"; do
+        PKGS=$(get_req_block "$block")
+        for pkg in $PKGS; do
+            ((TOTAL_DA_PKGS++))
+            lib=$(echo "$pkg" | sed 's/py//' | cut -d'=' -f1 | cut -d'>' -f1 | tr -d '[:space:]')
+            if python3 -c "import $lib" &>/dev/null; then
+                ((DA_FOUND_COUNT++))
+            fi
+        done
     done
-done
+
+    # If we found all packages natively, we don't need Docker
+    if [ "$TOTAL_DA_PKGS" -gt 0 ] && [ "$DA_FOUND_COUNT" -eq "$TOTAL_DA_PKGS" ]; then
+        echo "✅ All DA components found natively."
+        DA_MISSING=0
+    fi
+fi
+
 ###########################################################
 
 # --- 7. Docker Fallback Logic ---
-if [ "$DA_MISSING" -eq 1 ]; then
+if [ "$DA_MISSING" -eq 1 ] && [ "$IS_WSL" = true ]; then
     echo "🐳 JEDI components missing. Checking Docker..."
 
     # 1. Check if Docker is installed
@@ -126,8 +140,12 @@ if [ "$DA_MISSING" -eq 1 ]; then
 
     echo "✅ Docker is ready. "
 
-echo "🏗️  Building JEDI-Enabled Docker Image..."
-    cat << 'EOF_DOCKER' > Dockerfile
+# Check if the image already exists before building
+    if docker image inspect aiesda_jedi:${VERSION} &>/dev/null; then
+        echo "✅ Docker image aiesda_jedi:${VERSION} already exists. Skipping build."
+    else
+        echo "🏗️  Building JEDI-Enabled Docker Image..."
+        cat << 'EOF_DOCKER' > Dockerfile
 FROM jcsda/docker-gnu-openmpi-dev:latest
 USER root
 
@@ -148,12 +166,12 @@ ENV PATH="/home/aiesda/lib/aiesda/scripts:/home/aiesda/lib/aiesda/jobs:\${PATH}"
 RUN python3 -c "import ufo; print('✅ JEDI UFO found inside container')"
 EOF_DOCKER
 
-    docker build -t aiesda_jedi:${VERSION} -t aiesda_jedi:latest .
-
+        docker build -t aiesda_jedi:${VERSION} -t aiesda_jedi:latest .
+    fi
     # Add the alias if it doesn't exist
     if ! grep -q "aida-run" ~/.bashrc; then
-        echo "alias aida-run='docker run -it --rm -v \$(pwd):/home/aiesda aiesda_jedi:latest'" >> ~/.bashrc
-        echo "✅ Created 'aida-run' alias."
+            echo "alias aida-run='docker run -it --rm -v \$(pwd):/home/aiesda aiesda_jedi:latest'" >> ~/.bashrc
+            echo "✅ Created 'aida-run' alias."
     fi
     
 fi
