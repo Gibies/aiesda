@@ -186,8 +186,7 @@ COPY requirement.txt .
 RUN /usr/bin/python3 -m pip install --no-cache-dir -r requirement.txt --break-system-packages
 
 # 5. Verification check during build
-# Use absolute path for the final verification
-RUN /usr/bin/python3 -c "import ufo; print('✅ JEDI UFO found inside container')"
+RUN python3 -c "import sys; print('Python Path:', sys.path); import ufo; print('✅ JEDI UFO found inside container')"
 EOF_DOCKER
 
         docker build --no-cache -t aiesda_jedi:${VERSION} -t aiesda_jedi:latest \
