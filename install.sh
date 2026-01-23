@@ -175,13 +175,15 @@ RUN apt-get update && apt-get install -y build-essential python3-dev
 RUN apt-get update && apt-get install -y python3-pip libeccodes-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# 2. BRUTE-FORCE PATH DISCOVERY
-# We search for where 'ufo' is located and add that parent directory to PYTHONPATH.
-# We also use \$ to ensure Docker handles the variables, not the host shell.
+# 3. DISCOVER AND INJECT PATH (Internal to Container)
+# We use a unique marker 'AIESDA_INTERNAL_PATHS' to ensure idempotency
 RUN JEDI_PATH=$(find /usr/local -name "ufo" -type d -path "*/dist-packages/*" | head -n 1 | sed 's/\/ufo//') && \
-    echo "export PYTHONPATH=\$JEDI_PATH:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:\$PYTHONPATH" >> /etc/bash.bashrc
+    MARKER="AIESDA_INTERNAL_PATHS" && \
+    if ! grep -q "$MARKER" /etc/bash.bashrc; then \
+        echo -e "\n# >>> $MARKER >>>\nexport PYTHONPATH=\$JEDI_PATH:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:\$PYTHONPATH\n# <<< $MARKER <<<" >> /etc/bash.bashrc; \
+    fi
 
-# 2. SET ROBUST PATHS
+# 4. SET ROBUST PATHS
 # Using a wildcard (*) allows Python to find site-packages in 3.10, 3.11, or 3.12
 # Inside your Dockerfile generation block:
 # We use a wildcard to capture any python 3.x version present in the JCSDA image
@@ -192,14 +194,14 @@ ENV PATH="/usr/bin:/usr/local/bin:${PATH}"
 WORKDIR /home/aiesda
 COPY requirement.txt .
 
-# 4. Install Python Stack with extra retries for spotty connections
+# 5. Install Python Stack with extra retries for spotty connections
 RUN python3 -m pip install \
     --no-cache-dir \
     --retries 10 \
     --timeout 60 \
     -r requirement.txt --break-system-packages
 
-# 5. Verification check during build
+# 6. Verification check during build
 RUN python3 -c "import sys; print('Python Path:', sys.path); import ufo; print('✅ JEDI UFO found inside container')"
 EOF_DOCKER
 
@@ -208,12 +210,24 @@ EOF_DOCKER
         # Cleanup the temporary build workspace
         rm -rf "$BUILD_WORKSPACE"
     fi
-    # Add the alias if it doesn't exist
-    if ! grep -q "aida-run" ~/.bashrc; then
-            echo "alias aida-run='docker run -it --rm -v \$(pwd):/home/aiesda aiesda_jedi:latest'" >> ~/.bashrc
-            echo "✅ Created 'aida-run' alias."
+
+    # Define the unique identifier for your block
+    MARKER="AIESDA_JEDI_SETUP"
+
+    if ! grep -q "$MARKER" ~/.bashrc; then
+        echo "📝 Adding AIESDA configuration to ~/.bashrc..."
+        cat << EOF >> ~/.bashrc
+
+# >>> $MARKER >>>
+alias aida-run='docker run -it --rm -v \$(pwd):/home/aiesda aiesda_jedi:latest'
+
+# <<< $MARKER <<<
+EOF
+        echo "✅ Configuration added."
+    else
+        echo "ℹ️ AIESDA configuration already exists in ~/.bashrc, skipping."
     fi
-    
+
 fi
 ###########################################################
 
