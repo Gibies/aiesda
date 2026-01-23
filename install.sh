@@ -14,7 +14,8 @@ BUILD_WORKSPACE="${HOME}/build/docker_build_tmp"
 MODULE_FILE="${HOME}/modulefiles/${PROJECT_NAME}/${VERSION}"
 REQUIREMENTS="${PROJECT_ROOT}/requirement.txt"
 AIESDA_INSTALLED_ROOT="${BUILD_DIR}"
-sed -i '/aiesda/d' ~/.bashrc
+# Surgical cleanup: only removes the block between our markers
+sed -i '/# >>> AIESDA_JEDI_SETUP >>>/,/# <<< AIESDA_JEDI_SETUP <<< /d' ~/.bashrc
 
 NATIVE_BLOCKS=(
     "Numerical and Data Handling"
