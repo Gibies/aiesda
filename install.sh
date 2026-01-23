@@ -170,12 +170,13 @@ RUN if ! command -v python3 >/dev/null 2>&1; then \
         apt-get update && apt-get install -y python3-pip libeccodes-dev; \
     fi && rm -rf /var/lib/apt/lists/*
 # Install system dependencies needed for some python wheels
+RUN apt-get update && apt-get install -y build-essential python3-dev
 RUN apt-get update && apt-get install -y python3-pip libeccodes-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # 2. SET ROBUST PATHS
 # Using a wildcard (*) allows Python to find site-packages in 3.10, 3.11, or 3.12
-ENV PYTHONPATH="/usr/local/lib/python3.*/dist-packages:/usr/local/lib:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:${PYTHONPATH}"
+ENV PYTHONPATH="/app:/usr/local/lib/python3.*/dist-packages:/usr/local/lib:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:${PYTHONPATH}"
 ENV LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}"
 ENV PATH="/usr/bin:/usr/local/bin:${PATH}"
 
