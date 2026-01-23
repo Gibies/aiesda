@@ -182,8 +182,12 @@ ENV PATH="/usr/bin:/usr/local/bin:${PATH}"
 WORKDIR /home/aiesda
 COPY requirement.txt .
 
-# 4. Use absolute path for pip install
-RUN /usr/bin/python3 -m pip install --no-cache-dir -r requirement.txt --break-system-packages
+# 4. Install Python Stack with extra retries for spotty connections
+RUN python3 -m pip install \
+    --no-cache-dir \
+    --retries 10 \
+    --timeout 60 \
+    -r requirement.txt --break-system-packages
 
 # 5. Verification check during build
 RUN python3 -c "import sys; print('Python Path:', sys.path); import ufo; print('✅ JEDI UFO found inside container')"
