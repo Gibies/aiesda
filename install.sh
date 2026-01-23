@@ -156,45 +156,39 @@ if [ "$DA_MISSING" -eq 1 ] && [ "$IS_WSL" = true ]; then
         # 1. Copy only the necessary requirement file to the workspace
         cp requirement.txt "$BUILD_WORKSPACE/"
 
-        # 2. Generate the Dockerfile directly in the build area
+# 2. Generate the Dockerfile directly in the build area
         cat << 'EOF_DOCKER' > "$BUILD_WORKSPACE/Dockerfile"
 FROM jcsda/docker-gnu-openmpi-dev:latest
 USER root
 
-# Cache buster to force path re-evaluation
-RUN echo "Build Date: $(date)" > /build_info.txt
+# 1. Install System Dependencies
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    libeccodes-dev \
+    build-essential \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Check if python3 exists before trying to use it or install it
-RUN if ! command -v python3 >/dev/null 2>&1; then \
-        apt-get update && apt-get install -y python3 python3-pip libeccodes-dev; \
-    else \
-        echo "Python3 already present, ensuring pip is available..." && \
-        apt-get update && apt-get install -y python3-pip libeccodes-dev; \
-    fi && rm -rf /var/lib/apt/lists/*
-# Install system dependencies needed for some python wheels
-RUN apt-get update && apt-get install -y build-essential python3-dev
-RUN apt-get update && apt-get install -y python3-pip libeccodes-dev && \
-    rm -rf /var/lib/apt/lists/*
-
-# 3 & 4. DISCOVER AND SET PATHS
-# We find the path and set it as an ENV so it's available to ALL subsequent RUN commands
-RUN JEDI_PATH=$(find /usr/local -name "ufo" -type d -path "*/dist-packages/*" | head -n 1 | sed 's/\/ufo//') && \
-    echo "export PYTHONPATH=$JEDI_PATH:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:\$PYTHONPATH" >> /etc/bash.bashrc
-
-# IMPORTANT: We must set the ENV without wildcards for the build process to work.
-# We'll use a trick to set PYTHONPATH dynamically for the rest of the build.
-ENV PYTHONPATH="/usr/local/bundle/install/lib/python3.10/dist-packages:/usr/local/lib/python3.10/dist-packages:/usr/local/bundle/install/lib/python3.12/dist-packages:/usr/local/lib/python3.12/dist-packages:/app"
-
-# 5. Install Python Stack
+# 2. Setup Working Directory
 WORKDIR /home/aiesda
 COPY requirement.txt .
+
+# 3. Install Python Stack
 RUN python3 -m pip install --no-cache-dir -r requirement.txt --break-system-packages
 
-# 6. Verification check (Discover path on the fly for the test)
-RUN export PYTHONPATH=$(find /usr/local -name "ufo" -type d -path "*/dist-packages/*" | head -n 1 | sed 's/\/ufo//'):$PYTHONPATH && \
-    python3 -c "import ufo; print('✅ JEDI UFO found inside container')"
+# 4. DISCOVER PATHS AND SET ENVIRONMENT
+# We use a trick: find the UFO path and write it to a wrapper script 
+# or use a complex ENV that covers both 3.10 and 3.12 (common JEDI versions)
+ENV PYTHONPATH="/usr/local/bundle/install/lib/python3.10/dist-packages:/usr/local/lib/python3.10/dist-packages:/usr/local/bundle/install/lib/python3.12/dist-packages:/usr/local/lib/python3.12/dist-packages:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic"
+
+# 5. Verification check
+# We execute the discovery inline to ensure the build-time test passes
+RUN export JEDI_PATH=\$(find /usr/local -name "ufo" -type d -path "*/dist-packages/*" | head -n 1 | sed 's/\/ufo//') && \
+    export PYTHONPATH="\$JEDI_PATH:\$PYTHONPATH" && \
+    python3 -c "import sys; import ufo; print('✅ JEDI UFO found at:', ufo.__file__)"
 
 EOF_DOCKER
+
 
         docker build --no-cache -t aiesda_jedi:${VERSION} -t aiesda_jedi:latest \
                      -f "$BUILD_WORKSPACE/Dockerfile" "$BUILD_WORKSPACE"
