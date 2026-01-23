@@ -14,6 +14,7 @@ BUILD_WORKSPACE="${HOME}/build/docker_build_tmp"
 MODULE_FILE="${HOME}/modulefiles/${PROJECT_NAME}/${VERSION}"
 REQUIREMENTS="${PROJECT_ROOT}/requirement.txt"
 AIESDA_INSTALLED_ROOT="${BUILD_DIR}"
+sed -i '/aiesda/d' ~/.bashrc
 
 NATIVE_BLOCKS=(
     "Numerical and Data Handling"
@@ -182,7 +183,9 @@ RUN JEDI_PATH=$(find /usr/local -name "ufo" -type d -path "*/dist-packages/*" | 
 
 # 2. SET ROBUST PATHS
 # Using a wildcard (*) allows Python to find site-packages in 3.10, 3.11, or 3.12
-ENV PYTHONPATH="/app:/usr/local/lib/python3.*/dist-packages:/usr/local/lib:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:${PYTHONPATH}"
+# Inside your Dockerfile generation block:
+# We use a wildcard to capture any python 3.x version present in the JCSDA image
+ENV PYTHONPATH="/usr/local/bundle/install/lib/python3.*/dist-packages:/usr/local/lib/python3.*/dist-packages:/app:/usr/local/lib:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:${PYTHONPATH}"
 ENV LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}"
 ENV PATH="/usr/bin:/usr/local/bin:${PATH}"
 
