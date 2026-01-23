@@ -155,18 +155,14 @@ if [ "$DA_MISSING" -eq 1 ] && [ "$IS_WSL" = true ]; then
 
         # 1. Copy only the necessary requirement file to the workspace
         cp requirement.txt "$BUILD_WORKSPACE/"
+
 # 2. Generate the Dockerfile directly in the build area
-        cat << 'EOF_DOCKER' > "$BUILD_WORKSPACE/Dockerfile"
+cat << EOF_DOCKER > "$BUILD_WORKSPACE/Dockerfile"
 FROM jcsda/docker-gnu-openmpi-dev:latest
 USER root
 
-# 1. Standard System Clean up and Dependency Install
-RUN apt-get update && apt-get install -y \
-    python3-pip \
-    libeccodes-dev \
-    build-essential \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*
+# 1. System dependencies
+RUN apt-get update && apt-get install -y python3-pip libeccodes-dev build-essential python3-dev && rm -rf /var/lib/apt/lists/*
 
 # 2. Setup Working Directory
 WORKDIR /home/aiesda
@@ -175,20 +171,18 @@ COPY requirement.txt .
 # 3. Install Python Stack
 RUN python3 -m pip install --no-cache-dir -r requirement.txt --break-system-packages
 
-# 4. DISCOVER AND INJECT PATHS
-# We find the path and write it to a system-wide environment file.
-# We also use a literal export for the verification step.
-RUN JEDI_BASE=$(find /usr/local -name "ufo" -type d -path "*/dist-packages/*" | head -n 1 | sed 's/\/ufo//') && \
-    echo "export PYTHONPATH=$JEDI_BASE:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:\$PYTHONPATH" >> /etc/bash.bashrc && \
-    echo "export PYTHONPATH=$JEDI_BASE:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:\$PYTHONPATH" >> /etc/environment
+# 4. PATH INJECTION (Using a single RUN to ensure variable persistence)
+RUN JEDI_BASE=\$(find /usr/local -name "ufo" -type d -path "*/dist-packages/*" | head -n 1 | sed 's/\/ufo//') && \\
+    echo "export PYTHONPATH=\$JEDI_BASE:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:\\\$PYTHONPATH" >> /etc/bash.bashrc && \\
+    echo "export PYTHONPATH=\$JEDI_BASE:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:\\\$PYTHONPATH" >> /etc/environment
 
-# 5. Robust Environment Setting (covering common Python versions manually)
+# 5. Static ENV Fallback (No wildcards)
 ENV PYTHONPATH="/usr/local/bundle/install/lib/python3.10/dist-packages:/usr/local/lib/python3.10/dist-packages:/usr/local/bundle/install/lib/python3.12/dist-packages:/usr/local/lib/python3.12/dist-packages:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic"
 
-# 6. Verification check (Discovering JEDI_PATH in-line to ensure it exists for this shell)
-RUN export JEDI_PATH=$(find /usr/local -name "ufo" -type d -path "*/dist-packages/*" | head -n 1 | sed 's/\/ufo//') && \
-    export PYTHONPATH="$JEDI_PATH:$PYTHONPATH" && \
-    python3 -c "import sys; import ufo; print('✅ JEDI UFO found at:', ufo.__file__)"
+# 6. Verification check (Atomic command)
+RUN export JEDI_PATH=\$(find /usr/local -name "ufo" -type d -path "*/dist-packages/*" | head -n 1 | sed 's/\/ufo//') && \\
+    export PYTHONPATH="\$JEDI_PATH:\$PYTHONPATH" && \\
+    python3 -c "import ufo; print('✅ JEDI UFO found at:', ufo.__file__)"
 EOF_DOCKER
 
         docker build --no-cache -t aiesda_jedi:${VERSION} -t aiesda_jedi:latest \
