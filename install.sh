@@ -172,7 +172,13 @@ RUN if ! command -v python3 >/dev/null 2>&1; then \
 # Install system dependencies needed for some python wheels
 RUN apt-get update && apt-get install -y python3-pip libeccodes-dev && \
     rm -rf /var/lib/apt/lists/*
-# 4. Set environment for JEDI and AIESDA
+
+# 2. DYNAMIC PATH SETUP (Fixes the Python 3.10 vs 3.12 issue)
+# This finds the correct site-packages folder regardless of Python version
+RUN P_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')") && \
+    echo "export PYTHONPATH=/usr/local/lib/python\${P_VER}/dist-packages:/usr/local/lib:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:\${PYTHONPATH}" >> /etc/bash.bashrc
+
+# 3. Set environment for JEDI and AIESDA
 # We include both the site-packages for UFO and the local AIESDA paths
 ENV PYTHONPATH="/usr/local/lib/python3.12/dist-packages:/usr/local/lib:/home/aiesda/lib/aiesda/pylib:/home/aiesda/lib/aiesda/pydic:\${PYTHONPATH}"
 ENV LD_LIBRARY_PATH="/usr/local/lib:\${LD_LIBRARY_PATH}"
@@ -181,7 +187,7 @@ ENV PATH="/usr/bin:/usr/local/bin:\${PATH}"
 WORKDIR /home/aiesda
 COPY requirement.txt .
 
-# 3. Use absolute path for pip install
+# 4. Use absolute path for pip install
 RUN /usr/bin/python3 -m pip install --no-cache-dir -r requirement.txt --break-system-packages
 
 # 5. Verification check during build
