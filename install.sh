@@ -11,11 +11,19 @@ PROJECT_NAME="aiesda"
 PROJECT_ROOT=$(pwd)
 BUILD_DIR="${HOME}/build/${PROJECT_NAME}_build_${VERSION}"
 BUILD_WORKSPACE="${HOME}/build/docker_build_tmp"
-MODULE_FILE="${HOME}/modulefiles/${PROJECT_NAME}/${VERSION}"
-REQUIREMENTS="${PROJECT_ROOT}/requirement.txt"
+MODULE_PATH="${HOME}/modulefiles"
+PKG_MODULE_FILE="${MODULE_PATH}/${PROJECT_NAME}/${VERSION}"
+REQUIREMENTS="${PROJECT_ROOT}/requirements.txt"
 AIESDA_INSTALLED_ROOT="${BUILD_DIR}"
 # Surgical cleanup: only removes the block between our markers
 sed -i '/# >>> AIESDA_JEDI_SETUP >>>/,/# <<< AIESDA_JEDI_SETUP <<< /d' ~/.bashrc
+# Extract JEDI version from requirements.txt
+# Looks for the line starting with 'jedi==' or 'jedi>=' within the file
+JEDI_VERSION=$(grep -iE "^jedi[>=]*" "$REQUIREMENTS" | head -n 1 | sed 's/[^0-9.]*//g')
+# Fallback if not found
+JEDI_VERSION=${JEDI_VERSION:-"latest"}
+echo "🔍 Detected JEDI Target Version: ${JEDI_VERSION}"
+JEDI_MODULE_FILE="jedi/${JEDI_VERSION}"
 
 NATIVE_BLOCKS=(
     "Numerical and Data Handling"
@@ -106,14 +114,6 @@ else
 fi
 
 ###########################################################
-# Extract JEDI version from requirements.txt
-# Looks for the line starting with 'jedi==' or 'jedi>=' within the file
-JEDI_VERSION=$(grep -iE "^jedi[>=]*" "$REQUIREMENTS" | head -n 1 | sed 's/[^0-9.]*//g')
-
-# Fallback if not found
-JEDI_VERSION=${JEDI_VERSION:-"latest"}
-
-echo "🔍 Detected JEDI Target Version: ${JEDI_VERSION}"
 
 # --- 7. Docker Fallback Logic ---
 if [ "$DA_MISSING" -gt 0 ]; then
@@ -140,8 +140,8 @@ for asset in nml yaml jobs scripts pydic pylib; do
     [ -d "${PROJECT_ROOT}/$asset" ] && cp -rp "${PROJECT_ROOT}/$asset" "${AIESDA_INTERNAL_LIB}/"
 done
 
-mkdir -p $(dirname "${MODULE_FILE}")
-cat << EOF_MODULE > "${MODULE_FILE}"
+mkdir -p $(dirname "${PKG_MODULE_FILE}")
+cat << EOF_MODULE > "${PKG_MODULE_FILE}"
 #%Module1.0
 ## AIESDA v${VERSION}
 if { [is-loaded jedi] == 0 } { catch { module load jedi/1.5.0 } }
@@ -174,8 +174,8 @@ echo "🧪 Running Post-Installation Tests..."
         module use ${HOME}/modulefiles
         
         echo "🔄 Loading AIESDA and JEDI modules..."
-        module load aiesda/${VERSION}
-        module load jedi/${VERSION}
+        module load ${PKG_MODULE_FILE}
+        module load ${JEDI_MODULE_FILE}
         
         if [ "$IS_WSL" = true ]; then
             echo "📝 WSL Detection: Testing JEDI-Bridge..."
