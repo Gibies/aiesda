@@ -23,7 +23,7 @@ JEDI_VERSION=$(grep -iE "^jedi[>=]*" "$REQUIREMENTS" | head -n 1 | sed 's/[^0-9.
 # Fallback if not found
 JEDI_VERSION=${JEDI_VERSION:-"latest"}
 echo "🔍 Detected JEDI Target Version: ${JEDI_VERSION}"
-JEDI_MODULE_FILE="jedi/${JEDI_VERSION}"
+JEDI_MODULE_FILE="${MODULE_PATH}/jedi/${JEDI_VERSION}"
 
 NATIVE_BLOCKS=(
     "Numerical and Data Handling"
