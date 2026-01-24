@@ -98,19 +98,45 @@ EOF_DOCKER
         echo "✅ Docker build successful: aiesda_jedi:${VERSION}"
     fi
 
-    # 4. Alias Setup
-    MARKER="AIESDA_JEDI_SETUP"
-    if ! grep -q "$MARKER" ~/.bashrc; then
-        echo "📝 Updating ~/.bashrc with aida-run alias..."
-        cat << EOF >> ~/.bashrc
-
-# >>> $MARKER >>>
-alias aida-run='docker run -it --rm -v \$(pwd):/home/aiesda aiesda_jedi:latest'
-# <<< $MARKER <<<
+  # ... (After successful docker build) ...
+    
+    # 4. Create Wrapper Script instead of Alias
+    AIESDA_BIN_DIR="${BUILD_DIR}/bin"
+    mkdir -p "$AIESDA_BIN_DIR"
+    
+    cat << EOF > "${AIESDA_BIN_DIR}/jedi-run"
+#!/bin/bash
+# AIESDA JEDI Docker Wrapper
+docker run -it --rm -v \$(pwd):/home/aiesda aiesda_jedi:latest "\$@"
 EOF
-    fi
+
+    chmod +x "${AIESDA_BIN_DIR}/jedi-run"
+    echo "✅ Created Docker wrapper at ${AIESDA_BIN_DIR}/jedi-run"
+fi
 fi
 
+# --- 8. Module Generation ---
+MODULE_FILE="${HOME}/modulefiles/jedi_${VERSION}"
+mkdir -p $(dirname "${MODULE_FILE}")
+
+cat << EOF_MODULE > "${MODULE_FILE}"
+#%Module1.0
+## JEDI v${VERSION} (AIESDA Bridge)
+set version      ${VERSION}
+set jedi_root    ${BUILD_DIR}
+
+# Metadata
+setenv           JEDI_VERSION  \$version
+setenv           JEDI_ROOT     \$jedi_root/lib/aiesda
+
+# Docker Wrapper Path (for WSL/Laptop)
+# This prepends the bin directory only if it exists
+if { [file isdirectory \$jedi_root/bin] } {
+    prepend-path PATH            \$jedi_root/bin
+}
+
+help "This module provides the 'jedi-run' command to execute JEDI tasks via Docker on WSL."
+EOF_MODULE
 
 # --- 10. Testing Environment & Instructions ---
 echo "###########################################################"
