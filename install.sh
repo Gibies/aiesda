@@ -174,18 +174,6 @@ echo "------------------------------------------------------------"
         fi
     fi
 )
-
-# --- 10. Testing Environment & Instructions ---
-echo "###########################################################"
-echo "✅ Installation Complete!"
-echo ""
-echo "👉 To activate AIESDA in this session, run:"
-echo "   source ~/.bashrc"
-echo ""
-echo "🚀 To test the JEDI-AIESDA Bridge, run:"
-# We use backslashes here to ensure the quotes are printed correctly in the terminal
-echo "   aida-run python3 -c \"import ufo; import aidaconf; print('🚀 JEDI-AIESDA Bridge is Online')\""
-echo "###########################################################"
 ###########################################################
 exit 0
 
