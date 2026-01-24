@@ -56,6 +56,13 @@ setup(
     zip_safe=False,
     install_requires=parse_requirements("requirements.txt"),
     python_requires=">=3.9",
+
+    entry_points={
+        "console_scripts": [
+            "aiesda-run=aiesda.scripts.main:run",  
+            "aiesda-init=aiesda.scripts.setup_env:init",
+        ],
+    },
 )
 
 
