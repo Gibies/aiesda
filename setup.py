@@ -1,4 +1,25 @@
 from setuptools import setup, find_packages
+import os
+
+def parse_requirements(filename):
+    """
+    Helper to read requirements.txt. 
+    Filters out comments, empty lines, and specific JEDI/DA 
+    blocks if they are handled by Docker/HPC modules.
+    """
+    requirements = []
+    if os.path.exists(filename):
+        with open(filename, "r") as f:
+            for line in f:
+                line = line.strip()
+                # Skip comments, empty lines, and Block headers
+                if not line or line.startswith("#") or "BLOCK" in line:
+                    continue
+                # Optional: Skip specific libs you know are provided by JEDI modules
+                if any(x in line for x in ["ufo", "saber", "ioda"]):
+                    continue
+                requirements.append(line)
+    return requirements
 
 with open("VERSION", "r") as f:
     version = f.read().strip()
@@ -24,16 +45,10 @@ setup(
     },
     include_package_data=True,
     zip_safe=False,
-    install_requires=[
-        "numpy>=1.22.4",
-        "torch>=1.12.0",
-        "pyyaml>=6.0",
-        "xarray",
-        "netCDF4"
-        "matplotlib>=3.5.0",
-        # Note: JEDI/SABER/NCAR components are usually 
-        # provided by the HPC environment modules.
-    ],
+    install_requires=parse_requirements("requirements.txt"),
     python_requires=">=3.9",
 )
+
+
+
 
