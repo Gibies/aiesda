@@ -8,10 +8,20 @@ SELF=$(realpath "${0}")
 HOMEDIR=$(cd "$(dirname "$(realpath "$0")")/.." && pwd)
 export HOMEDIR
 PROJECT_ROOT="$HOMEDIR" # Fixed syntax
-REQUIREMENTS="$PROJECT_ROOT/requirements.txt"
-JEDI_VERSION=${VERSION:-"dev"}
+MODULE_PATH="${HOME}/modulefiles"
+BUILD_DIR="${HOME}/build/${PROJECT_NAME}_build_${VERSION}"
 BUILD_WORKSPACE="${HOME}/build/docker_build_tmp"
 
+REQUIREMENTS="$PROJECT_ROOT/requirements.txt"
+# Extract JEDI version from requirements.txt
+# Looks for the line starting with 'jedi==' or 'jedi>=' within the file
+JEDI_VERSION=$(grep -iE "^jedi[>=]*" "$REQUIREMENTS" | head -n 1 | sed 's/[^0-9.]*//g')
+# Fallback if not found
+JEDI_VERSION=${JEDI_VERSION:-"latest"}
+echo "🔍 Detected JEDI Target Version: ${JEDI_VERSION}"
+JEDI_MODULE_FILE="${MODULE_PATH}/jedi/${JEDI_VERSION}"
+
+DA_MISSING=1
 
 # --- 7. Docker Fallback Logic ---
 if [ "$DA_MISSING" -eq 1 ] && [ "$IS_WSL" = true ]; then
