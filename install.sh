@@ -155,25 +155,33 @@ echo "------------------------------------------------------------"
 ###########################################################
 
 # --- 9. Testing Environment ---
+echo "🧪 Running Post-Installation Tests..."
 (
-    # Initialize modules if available
+    # Initialize modules
     [ -f /usr/share/modules/init/bash ] && source /usr/share/modules/init/bash
     
     if command -v module >/dev/null 2>&1; then
         module use ${HOME}/modulefiles
+        
+        echo "🔄 Loading AIESDA and JEDI modules..."
         module load aiesda/${VERSION}
-        echo "🧪 Testing module load..."
+        module load jedi/${VERSION}
         
         if [ "$IS_WSL" = true ]; then
-            echo "📝 WSL/Laptop detected: Running Bridge Test via Docker..."
-            # Use the newly built image to test if aidaconf can see UFO inside the container
-            docker run --rm -v $(pwd):/home/aiesda aiesda_jedi:${VERSION} python3 -c "import ufo; import aidaconf; print('✅ Success! JEDI and AIESDA linked via Docker.')"
+            echo "📝 WSL Detection: Testing JEDI-Bridge..."
+            # Verify the wrapper from the 'jedi' module is active
+            if command -v jedi-run >/dev/null 2>&1; then
+                jedi-run python3 -c "import ufo; import aidaconf; print('✅ Bridge Verified: JEDI + AIESDA are talking.')"
+            else
+                echo "❌ ERROR: 'jedi-run' not found. Check if the jedi/${VERSION} module was created correctly."
+            fi
         else
-            echo "📝 Native/HPC detected: Running Native Test..."
-            python3 -c "import aidaconf; print('✅ Success! aidaconf found natively.')"
+            echo "📝 HPC Detection: Testing Native Stack..."
+            python3 -c "import ufo; import aidaconf; print('✅ Native Verified: JEDI + AIESDA linked.')"
         fi
     fi
 )
+
 ###########################################################
 exit 0
 
