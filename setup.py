@@ -3,21 +3,26 @@ import os
 
 def parse_requirements(filename):
     """
-    Helper to read requirements.txt. 
-    Filters out comments, empty lines, and specific JEDI/DA 
-    blocks if they are handled by Docker/HPC modules.
+    Parses requirements.txt for native Python dependencies.
+    Skips JEDI/DA components that are handled by Docker/HPC modules.
     """
     requirements = []
     if os.path.exists(filename):
         with open(filename, "r") as f:
             for line in f:
-                line = line.strip()
-                # Skip comments, empty lines, and Block headers
-                if not line or line.startswith("#") or "BLOCK" in line:
+                # Remove inline comments and whitespace
+                line = line.split('#')[0].strip()
+                
+                # Skip empty lines, block headers, or complex JEDI modules
+                if not line or "BLOCK" in line:
                     continue
-                # Optional: Skip specific libs you know are provided by JEDI modules
-                if any(x in line for x in ["ufo", "saber", "ioda"]):
+                
+                # Exclude packages provided by JEDI stack (HPC/Docker)
+                # This prevents pip from trying to build C++ bindings from scratch
+                jedi_libs = ["ufo", "saber", "ioda", "oops", "vader"]
+                if any(lib in line.lower() for lib in jedi_libs):
                     continue
+                    
                 requirements.append(line)
     return requirements
 
@@ -29,11 +34,14 @@ setup(
     version=version,
     description="Artificial Intelligence based Earth System Data Assimilation",
     author="gibies",
+    
     # Define the hierarchy
     packages=["aiesda", "aiesda.pylib", "aiesda.pydic", "aiesda.scripts"],
 
     # Mapping namespaces to physical directories
+    # Note: "." maps the base 'aiesda' to the current directory for package_data
     package_dir={
+        "aiesda": ".", 
         "aiesda.pylib": "pylib",
         "aiesda.pydic": "pydic",
         "aiesda.scripts": "scripts",
@@ -41,14 +49,13 @@ setup(
 
     # Ensuring configs are bundled into the versioned build
     package_data={
-        "aiesda": ["nml/*.nml", "yaml/*.yml", "jobs/*.sh", "palette/*"],
+        "aiesda": ["nml/*.nml", "yaml/*.yml", "yaml/*.yaml", "jobs/*.sh", "palette/*"],
     },
+    
     include_package_data=True,
     zip_safe=False,
     install_requires=parse_requirements("requirements.txt"),
     python_requires=">=3.9",
 )
-
-
 
 
