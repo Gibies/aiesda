@@ -4,10 +4,15 @@
 # This script handles the JEDI-bridge image creation for WSL/Laptop users.
 # ==============================================================================
 
+# Finds the directory containing the script, then goes up one level
+SELF=$(realpath ${0})
+HOMEDIR=$(cd "$(dirname "$(realpath "$0")")/.." && pwd)
+export HOMEDIR
+
 # Inherit variables from main installer or set defaults
 VERSION=${VERSION:-"dev"}
 BUILD_WORKSPACE="${HOME}/build/docker_build_tmp"
-PROJECT_ROOT=$(pwd)
+PROJECT_ROOT=$(HOMEDIR)
 
 echo "🏗️  Starting JEDI-Enabled Docker Build (v${VERSION})..."
 
