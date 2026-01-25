@@ -68,13 +68,18 @@ fi
 # --- 4. Helper Function (With '&' Fix) ---
 get_req_block() {
     local block_name=$1
-    # FIX: Escape ampersands for sed safety
     local escaped_name=$(echo "$block_name" | sed 's/&/\\&/g')
     if [ -f "$REQUIREMENTS" ]; then
+        # 1. Extract block
+        # 2. Remove block headers
+        # 3. Remove lines that are ONLY comments or empty
+        # 4. Remove inline comments (space+#)
         sed -n "/# === BLOCK: ${escaped_name} ===/,/# === END BLOCK ===/p" "$REQUIREMENTS" | \
-            sed "/# ===/d; /^#/d; /^\s*$/d; s/[[:space:]]*#.*//g"
+            sed "/# ===/d; /^\s*#/d; /^\s*$/d; s/[[:space:]]*#.*//g"
     fi
 }
+
+
 ###########################################################
 
 # --- 5. Installation Loop ---
