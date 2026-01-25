@@ -152,6 +152,9 @@ done
 # Ensure VERSION file is in the build root so aiesda/__init__.py can find it
 cp "${PROJECT_ROOT}/VERSION" "${AIESDA_INTERNAL_LIB}/"
 
+# Ensure requirements.txt is archived with the build for future cleanup context
+cp "${PROJECT_ROOT}/requirements.txt" "${AIESDA_INTERNAL_LIB}/"
+
 mkdir -p $(dirname "${PKG_MODULE_FILE}")
 cat << EOF_MODULE > "${PKG_MODULE_FILE}"
 #%Module1.0
