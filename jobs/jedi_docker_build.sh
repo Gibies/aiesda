@@ -77,14 +77,15 @@ RUN apt-get update && apt-get install -y python3-pip libeccodes-dev build-essent
 WORKDIR /app
 COPY requirements.txt .
 RUN python3 -m pip install --no-cache-dir -r requirements.txt --break-system-packages
-#ENV PYTHONPATH="......."
-# Note: We rely on the 'jedi-run' wrapper to inject the host-built PYTHONPATH 
-# via the -e flag, so we just need to ensure the JEDI system paths are ready.
+
+# Dynamically find JEDI paths and verify UFO availability
 RUN JEDI_BASE_DIR=$(find /usr/local -name "ufo" -type d | head -n 1) && \
-    echo "export PYTHONPATH=$(dirname $JEDI_BASE_DIR):\$PYTHONPATH" >> /etc/bash.bashrc
+    JEDI_PATH=$(dirname "$JEDI_BASE_DIR") && \
+    echo "export PYTHONPATH=$JEDI_PATH:\$PYTHONPATH" >> /etc/bash.bashrc && \
+    export PYTHONPATH="$JEDI_PATH:$PYTHONPATH" && \
     python3 -c "import ufo; print('✅ JEDI UFO found at:', ufo.__file__)"
 EOF_DOCKER
-
+        
         # JEDI version taging inside aiesda/jobs/jedi_docker_build.sh
         docker build --no-cache -t aiesda_jedi:${JEDI_VERSION} -t aiesda_jedi:latest \
                      -f "$BUILD_WORKSPACE/Dockerfile" "$BUILD_WORKSPACE"
