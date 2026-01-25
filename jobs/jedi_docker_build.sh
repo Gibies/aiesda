@@ -98,9 +98,9 @@ cat << EOF > "${AIESDA_BIN_DIR}/jedi-run"
 # AIESDA JEDI Docker Wrapper
 # Mounts the current directory AND the AIESDA install root for full integration
 docker run -it --rm \\
-    -v "\$(pwd):/home/aiesda/work" \\
+    -v "\$(pwd):/home/work/aiesda" \\
     -v "${AIESDA_INSTALLED_ROOT}:/home/aiesda/lib" \\
-    -w /home/aiesda/work \\
+    -w /home/work/aiesda \\
     aiesda_jedi:${JEDI_VERSION} "\$@"
 EOF
 chmod +x "${AIESDA_BIN_DIR}/jedi-run"
