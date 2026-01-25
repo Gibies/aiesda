@@ -25,6 +25,10 @@ JEDI_VERSION=${JEDI_VERSION:-"latest"}
 echo "🔍 Detected JEDI Target Version: ${JEDI_VERSION}"
 JEDI_MODULE_FILE="${MODULE_PATH}/jedi/${JEDI_VERSION}"
 
+# Uninstall pre-existing build copies of the same version number.
+echo "♻️  Wiping existing installation for v$VERSION..."
+bash remove.sh "$VERSION" >/dev/null 2>&1
+
 NATIVE_BLOCKS=(
     "Numerical and Data Handling"
     "Geospatial Visualization"
