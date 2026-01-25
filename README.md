@@ -30,13 +30,9 @@ cd aiesda
 
 ```
 aiesda_build_2026.1/
-
 ├── lib/
-
 │   ├── aiesda/
-
 │   │   ├── __init__.py    (from setup.py build)
-
 │   │   ├── VERSION        (copied manually)
 
 │   │   ├── nml/           (synced assets)
