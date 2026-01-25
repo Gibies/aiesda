@@ -79,6 +79,7 @@ RUN JEDI_BASE_DIR=$(find /usr/local -name "ufo" -type d | head -n 1) && \
     python3 -c "import ufo; print('✅ JEDI UFO found at:', ufo.__file__)"
 EOF_DOCKER
 
+        # JEDI version taging inside aiesda/jobs/jedi_docker_build.sh
         docker build --no-cache -t aiesda_jedi:${JEDI_VERSION} -t aiesda_jedi:latest \
                      -f "$BUILD_WORKSPACE/Dockerfile" "$BUILD_WORKSPACE"
 
