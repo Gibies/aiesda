@@ -249,7 +249,12 @@ echo "🧪 Running Post-Installation Tests..."
 
 ###########################################################
 exit 0
-
+echo "------------------------------------------------"
+echo "✅ AIESDA v${VERSION} Installation Complete!"
+echo "📝 Log: ${LOG_BASE}/install.log"
+echo "📂 Build: ${BUILD_DIR}"
+echo "💻 Command: module load ${PROJECT_NAME}/${VERSION}"
+echo "------------------------------------------------"
 ###########################################################
 ###		End of the file install.sh		                ###
 ###########################################################
