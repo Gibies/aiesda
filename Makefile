@@ -24,3 +24,6 @@ test:
 	@if [ -f ${HOME}/build/aiesda_build_$$(cat VERSION)/bin/jedi-run ]; then \
 		${HOME}/build/aiesda_build_$$(cat VERSION)/bin/jedi-run python3 -c "import ufo; print('✅ JEDI Bridge: OK')"; \
 	fi
+
+reinstall: 
+	clean install
