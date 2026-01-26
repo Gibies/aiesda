@@ -161,7 +161,8 @@ fi
 echo "🏗️  Finalizing AIESDA Build..."
 rm -rf "${BUILD_DIR}"
 # Build the package into the targeted build directory
-python3 setup.py build --build-base "${BUILD_DIR}"
+python3 setup.py build --build-base "${BUILD_DIR}" \
+                 egg_info --egg-base "${BUILD_DIR}"
 
 # Manually sync assets that setup.py might miss or that you want in specific subfolders
 AIESDA_INTERNAL_LIB="${BUILD_DIR}/lib/aiesda"
