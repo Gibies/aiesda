@@ -1,3 +1,0 @@
-[console_scripts]
-aiesda-init = aiesda.scripts.setup_env:init
-aiesda-run = aiesda.scripts.main:run
