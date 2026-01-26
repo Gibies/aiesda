@@ -6,7 +6,7 @@
 PROJECT_NAME="aiesda"
 
 # Discover the Repo Root relative to this script's location
-# This allows you to run 'bash jobs/install.sh' from anywhere
+# This allows you to run 'bash jobs/remove.sh' from anywhere
 JOBS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PROJECT_ROOT=$(cd "$JOBS_DIR/.." && pwd)
 
