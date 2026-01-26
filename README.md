@@ -23,7 +23,7 @@ AIESDA (Artificial Intelligence based Earth System Data Assimilation) is a next-
 ```bash
 git clone https://github.com/NCMRWF/aiesda.git
 cd aiesda
-./install.sh
+make install
 
 ```
 # Package directory structure after installation
