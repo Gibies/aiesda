@@ -3,18 +3,20 @@
 # AIESDA Unified Installer (WSL/Laptop & HPC)
 # ==============================================================================
 # install.sh
-LOG_BASE="${HOME}/logs/$(date +%Y/%m/%d)/${PROJECT_NAME}/${VERSION}"
-mkdir -p "$LOG_BASE"
-
-echo "📝 Logs for this installation session: ${LOG_BASE}/install.log"
-exec > >(tee -a "${LOG_BASE}/install.log") 2>&1
 ###########################################################
 # --- 1. Configuration ---
 ###########################################################
-# Read version, clean whitespace, and strip leading zeros (2026.01 -> 2026.1)
 VERSION=$(cat VERSION 2>/dev/null | tr -d '[:space:]' | sed 's/\.0\+/\./g')
-VERSION=${VERSION:-"dev"}  # If VERSION is empty or file missing, default to 'dev'
+VERSION=${VERSION:-"dev"}
 PROJECT_NAME="aiesda"
+
+# --- NEW: Initialize Logging NOW that variables are set ---
+LOG_BASE="${HOME}/logs/$(date +%Y/%m/%d)/${PROJECT_NAME}/${VERSION}"
+mkdir -p "$LOG_BASE"
+echo "📝 Logs for this installation session: ${LOG_BASE}/install.log"
+exec > >(tee -a "${LOG_BASE}/install.log") 2>&1
+# ---------------------------------------------------------
+
 PROJECT_ROOT=$(pwd)
 BUILD_DIR="${HOME}/build/${PROJECT_NAME}_build_${VERSION}"
 BUILD_WORKSPACE="${HOME}/build/docker_build_tmp"
