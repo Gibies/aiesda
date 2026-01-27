@@ -8,6 +8,8 @@
 ###########################################################
 
 PROJECT_NAME="aiesda"
+# Capture Site Argument (Default to 'docker')
+SITE_NAME=${1:-"docker"}
 
 # Discover the Repo Root relative to this script's location
 # This allows you to run 'bash jobs/install.sh' from anywhere
