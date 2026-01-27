@@ -177,15 +177,24 @@ cp "${PROJECT_ROOT}/VERSION" "${AIESDA_INTERNAL_LIB}/"
 # Ensure requirements.txt is archived with the build for future cleanup context
 cp "${PROJECT_ROOT}/requirements.txt" "${AIESDA_INTERNAL_LIB}/"
 
+# Define the target modulefile path
+PKG_MODULE_FILE="${MODULE_PATH}/${PROJECT_NAME}/${VERSION}"
 mkdir -p $(dirname "${PKG_MODULE_FILE}")
+# Start with a generic header
 cat << EOF_MODULE > "${PKG_MODULE_FILE}"
 #%Module1.0
-## AIESDA v${VERSION} (Linked to JEDI ${JEDI_VERSION})
+## AIESDA v${VERSION} (${SITE_NAME} environment)
+EOF_MODULE
 
-# Dependency: Load the JEDI version found in requirements.txt
-if { [is-loaded jedi/${JEDI_VERSION}] == 0 } { 
-    catch { module load jedi/${JEDI_VERSION} } 
-}
+# Inject the site-specific TCL snippet
+# We export the JEDI_VERSION so the TCL script can pick it up via $env()
+export JEDI_VERSION="${JEDI_VERSION}"
+if [ -f "sites/${SITE_NAME}/env_setup.tcl" ]; then
+    cat "sites/${SITE_NAME}/env_setup.tcl" >> "${PKG_MODULE_FILE}"
+fi
+
+# Append the core Python/Library paths
+cat << EOF_MODULE >> "${PKG_MODULE_FILE}"
 
 set version      ${VERSION}
 set aiesda_root  ${AIESDA_INSTALLED_ROOT}
