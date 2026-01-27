@@ -252,7 +252,7 @@ echo "🧪 Running Post-Installation Tests..."
         python3 -c "import aiesda; print(f'✅ AIESDA v{aiesda.__version__} initialized with {aiesda.AIESDAConfig}')"
         
         # Test 2: Stack Integration
-        if [ "$IS_WSL" = true ]; then
+        if [ "$SITE_NAME" = "docker" ]; then
             echo "📝 WSL Detection: Testing JEDI-Bridge via jedi-run..."
             if command -v jedi-run >/dev/null 2>&1; then
                 jedi-run python3 -c "import ufo; print('✅ Bridge Verified: JEDI container is reachable.')"
