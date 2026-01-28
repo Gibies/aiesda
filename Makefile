@@ -28,7 +28,7 @@ sync:
 	@bash jobs/update_pkg.sh
 
 install:
-	@bash jobs/install.sh
+	@bash jobs/install.sh SITE=$(SITE)
 
 clean:
 	@bash jobs/remove.sh $$(cat VERSION)
@@ -45,12 +45,12 @@ archive:
 # Ensure clean finishes before install starts
 reinstall:
 	@$(MAKE) clean
-	@$(MAKE) install
+	@$(MAKE) install SITE=$(SITE)
 
 update: 
 	@$(MAKE) sync
-	@$(MAKE) reinstall
+	@$(MAKE) reinstall SITE=$(SITE)
 
 release: 
 	@$(MAKE) bump
-	@$(MAKE) archive
+	@$(MAKE) archive -m $(MSG)
