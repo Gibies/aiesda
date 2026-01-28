@@ -54,15 +54,23 @@ JEDI_BUILD="${BUILD_ROOT}/jedi_build_${JEDI_VERSION}"
 JEDI_MOD="${MODULE_PATH}/jedi/${JEDI_VERSION}"
 
 # 3. Interactive JEDI Cleanup
+DO_FULL_WIPE="false"
 if [[ -t 0 && "$JEDI_VERSION" != "unknown" ]]; then
     echo ""
     echo "❓ JEDI Component Detected (v${JEDI_VERSION})"
     read -p "Do you also want to remove the associated JEDI Docker image and bridge? (y/N): " confirm_jedi
-else
-    confirm_jedi="n"
+    DO_FULL_WIPE="true"
 fi
 
-if [[ "$confirm_jedi" =~ ^[yY]$ ]]; then
+# Only wipe JEDI if SITE is Docker AND Version is different.
+# In all other cases (HPC or same version), we skip the deep wipe.
+
+if [[ "$SITE_NAME" == "docker" ]] && [[ "$NEW_JEDI_REQ" != "$OLD_JEDI_INSTALLED" ]]; then
+    DO_FULL_WIPE="true"
+    echo "⚠️  Docker & JEDI version mismatch detected ($OLD_JEDI_INSTALLED -> $NEW_JEDI_REQ)."
+fi
+
+if [["$DO_FULL_WIPE" == "true"]]; then
     # Remove Docker Image
     if command -v docker &>/dev/null; then
         IMAGE_ID=$(docker images -q "$JEDI_IMAGE")
