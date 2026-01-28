@@ -77,6 +77,12 @@ if [["$DO_FULL_WIPE" == "true"]]; then
         if [ -n "$IMAGE_ID" ]; then
             echo "🐳 Removing Docker image: $JEDI_IMAGE"
             docker rmi -f "$IMAGE_ID"
+            pid=$!
+            spin='-\|/'
+            while kill -0 $pid 2>/dev/null; do
+                i=$(( (i+1) %4 )); printf "\b${spin:$i:1}"; sleep .1
+            done
+            echo " ✅ Done."
         fi
     fi
 
