@@ -60,7 +60,49 @@ fi
 echo "🔍 Loaded ${#NATIVE_BLOCKS[@]} Native Blocks and ${#COMPLEX_BLOCKS[@]} Complex Blocks."
 
 ###########################################################
-# --- 2. Pre-flight Checks (WSL & OS Detection) ---
+# --- 1.1 Progress reporting function ---		###
+###########################################################
+
+# Helper for clean progress reporting
+step_label() {
+    echo -e "\n\033[1;34m[STEP $1]: $2\033[0m"
+    echo "------------------------------------------------"
+}
+
+# Spinner for long-running background tasks
+show_spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='|/-\'
+    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+    done
+    printf "    \b\b\b\b"
+}
+
+###########################################################
+# --- 2.1 Load Site-Specific Environment 		###
+###########################################################
+ENV_TCL="${PROJECT_ROOT}/sites/${SITE_NAME}/env_setup.tcl"
+if [ -f "$ENV_TCL" ]; then
+    echo "🌐 Loading environment from: $ENV_TCL"
+    # Loading the TCL file via module command updates PATH for Python 3.9
+    module load "$ENV_TCL"
+else
+    echo "⚠️  No site config found at $ENV_TCL, using default environment."
+fi
+
+# 2. Force use of the Python 3.9 from the module
+export PYTHON_EXE=$(which python3)
+echo "🐍 Using Python executable: $PYTHON_EXE"
+
+
+###########################################################
+# --- 2.2 Pre-flight Checks (WSL & OS Detection) ---
 ###########################################################
 IS_WSL=false
 if grep -qi "microsoft" /proc/version 2>/dev/null || grep -qi "wsl" /proc/sys/kernel/osrelease 2>/dev/null; then
@@ -69,6 +111,7 @@ if grep -qi "microsoft" /proc/version 2>/dev/null || grep -qi "wsl" /proc/sys/ke
 else
     echo "🐧 Native Linux/HPC Detected."
 fi
+show_spinner $!
 
 ###########################################################
 # --- 3. Self-Healing: Check for pip ---
@@ -83,6 +126,7 @@ if ! command -v pip3 &> /dev/null; then
         exit 1
     fi
 fi
+show_spinner $!
 
 ###########################################################
 # --- 4. Helper Function (With '&' Fix) ---
@@ -99,7 +143,7 @@ get_req_block() {
             sed "/# ===/d; /^\s*#/d; /^\s*$/d; s/[[:space:]]*#.*//g"
     fi
 }
-
+show_spinner $!
 
 ###########################################################
 # --- 5. Installation Loop ---
@@ -112,6 +156,7 @@ for block in "${NATIVE_BLOCKS[@]}"; do
     PKGS=$(get_req_block "$block")
     [ ! -z "$PKGS" ] && python3 -m pip install --user $PKGS --break-system-packages
 done
+show_spinner $!
 
 ###########################################################
 # --- 6. Complex Block Verification ---
@@ -141,6 +186,7 @@ else
     # Calculate how many are missing. If > 0, we need the container fallback.
     DA_MISSING=$((TOTAL_DA_PKGS - DA_FOUND_COUNT))
 fi
+show_spinner $!
 
 ###########################################################
 # --- 7. Docker Fallback Logic ---
@@ -155,7 +201,7 @@ if [ "$DA_MISSING" -gt 0 ]; then
 else
     echo "✅ No Docker fallback required."
 fi
-
+show_spinner $!
 
 ###########################################################
 # --- 8. Build & Module Generation ---
@@ -220,6 +266,7 @@ if { [file isdirectory \$aiesda_root/bin] } {
     prepend-path PATH            \$aiesda_root/bin
 }
 EOF_MODULE
+show_spinner $!
 
 ###########################################################
 # --- 9. Build Metadata archival for future reference ---
@@ -229,6 +276,7 @@ echo "📦 Archiving build metadata..."
 mkdir -p "${BUILD_DIR}/lib/aiesda"
 cp "${PROJECT_ROOT}/requirements.txt" "${BUILD_DIR}/lib/aiesda/requirements.txt"
 cp "${PROJECT_ROOT}/VERSION" "${BUILD_DIR}/lib/aiesda/VERSION"
+show_spinner $!
 
 ###########################################################
 # --- 10. Testing Environment ---
@@ -265,6 +313,7 @@ echo "🧪 Running Post-Installation Tests..."
         fi
     fi
 )
+show_spinner $!
 
 ###########################################################
 # --- 11. Final Summary ---
@@ -277,7 +326,7 @@ echo "💻 Command: module load ${PROJECT_NAME}/${VERSION}"
 echo "------------------------------------------------"
 exit 0
 ###########################################################
-###		End of the file install.sh		                ###
+###	End of the file install.sh		        ###
 ###########################################################
 
 
