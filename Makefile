@@ -14,6 +14,9 @@ help:
 version:
 	@echo "Current Target: $$(cat VERSION)"
 
+sync:
+	@bash jobs/update_pkg.sh
+
 install:
 	@bash jobs/install.sh
 
@@ -29,3 +32,5 @@ bump:
 reinstall: 
 	clean install
 
+update: 
+	sync reinstall
