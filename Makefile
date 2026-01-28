@@ -1,6 +1,11 @@
 # AIESDA Automation Makefile
 # Targets: install, clean, test
 
+# Default message if none is provided
+MSG ?= "routine_update"
+# Archive local changes with a message
+# Usage: make archive MSG="your_message_here"
+
 .PHONY: install clean test help
 
 # Default target
@@ -29,8 +34,14 @@ test:
 bump:
 	@bash jobs/bump_version.sh
 
+archive:
+	@bash jobs/archive_pkg.sh -m $(MSG)
+
 reinstall: 
 	clean install
 
 update: 
 	sync reinstall
+
+release: 
+	bump archive
