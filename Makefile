@@ -54,4 +54,4 @@ update:
 release: 
 	@$(MAKE) test
 	@$(MAKE) bump
-	@$(MAKE) archive -m $(MSG)
+	@$(MAKE) archive MSG=$(MSG)
