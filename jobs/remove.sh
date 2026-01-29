@@ -56,6 +56,9 @@ JEDI_MOD="${MODULE_PATH}/jedi/${JEDI_VERSION}"
 # 3. Interactive JEDI Cleanup
 DO_FULL_WIPE="false"
 
+# ADD THIS: Extract current requirement to compare against the build being removed
+NEW_JEDI_REQ=$(grep -iE "^jedi" "${PROJECT_ROOT}/requirements.txt" 2>/dev/null | sed 's/.*[>=]\+\s*//g' | tr -d '[:space:]')
+OLD_JEDI_INSTALLED=$JEDI_VERSION
 
 # Only wipe JEDI if SITE is Docker AND Version is different.
 # In all other cases (HPC or same version), we skip the deep wipe.
