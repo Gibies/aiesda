@@ -81,8 +81,10 @@ bash $JOBS_DIR/remove.sh "$VERSION" >/dev/null 2>&1
 
 # Dynamically extract NATIVE_BLOCKS and COMPLEX_BLOCKS from requirements.txt
 if [ -f "$REQUIREMENTS" ]; then
-    # Extract the lines between the markers, remove the leading '# ', and evaluate them
-    eval "$(sed -n '/# >>> BASH_CONFIG_START >>>/,/# <<< BASH_CONFIG_END <<</p' "$REQUIREMENTS" | sed 's/^# //')"
+    # Extract lines between markers, remove leading '# ', and FILTER OUT the markers themselves
+    eval "$(sed -n '/# >>> BASH_CONFIG_START >>>/,/# <<< BASH_CONFIG_END <<</p' "$REQUIREMENTS" | \
+            sed 's/^# //' | \
+            grep -v ">>>" | grep -v "<<<")"
 else
     echo "❌ ERROR: requirements.txt not found!"
     exit 1
