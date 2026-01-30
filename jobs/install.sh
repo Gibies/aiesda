@@ -113,7 +113,7 @@ show_spinner() {
     local spinstr='|/-\'
     while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
         local temp=${spinstr#?}
-        printf " [%c]  " "$spinstr"
+        printf " [%c]  " "$spinstr" "$block"
         local spinstr=$temp${spinstr%"$temp"}
         sleep $delay
         printf "\b\b\b\b\b\b"
@@ -254,7 +254,8 @@ echo "🏗️  Finalizing AIESDA Build..."
 rm -rf "${BUILD_DIR}"
 # Build the package into the targeted build directory
 python3 setup.py build --build-base "${BUILD_DIR}" \
-                 egg_info --egg-base "${BUILD_DIR}"
+                 egg_info --egg-base "${BUILD_DIR}" >> "${LOG_BASE}/install.log" 2>&1 &
+show_spinner $! "setup"
 
 # Manually sync assets that setup.py might miss or that you want in specific subfolders
 AIESDA_INTERNAL_LIB="${BUILD_DIR}/lib/aiesda"
