@@ -108,9 +108,10 @@ step_label() {
 # Spinner for long-running background tasks
 show_spinner() {
     local pid=$1
-	local block=${2:-null}
+	local block=${2:-"process"}
     local delay=0.1
     local spinstr='|/-\'
+	[[ -z "$pid" || "$pid" == "0" ]] && return 0
     while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
         local temp=${spinstr#?}
         printf " [%c]  " "$spinstr" "$block"
