@@ -3,12 +3,44 @@
 # AIESDA Version-Specific Cleanup Utility (remove.sh)
 # ==============================================================================
 
-PROJECT_NAME="aiesda"
+SELF=$(realpath ${0})
+HOST=$(hostname)
+export JOBSDIR=${SELF%/*}
+export PKG_ROOT=${SELF%/jobs/*}
+export PKG_NAME=${PKG_ROOT##*/}
+
+###########################################################################################
+helpdesk()
+{
+echo -e "Usage: \n $0"
+                        echo "options:"
+			echo "-h	--help		Help"
+			echo "-s	--site		site information for coustum settings"
+			echo "-p	--pkg		Package Name"
+                        exit 0
+}
+###########################################################################################
+options()
+{
+while test $# -gt 0; do
+     case "$1" in
+            -h|--help) 	helpdesk;;
+		    -s|--site)	shift; SITE_NAME=$1; shift;;
+		    -p|--pkg)	shift; PKG_NAME=$1; shift;;
+		    *)		shift;;
+	esac
+done
+}
+###########################################################################################
+options $(echo $@  | tr "=" " ")
+###########################################################################################
+
+PROJECT_NAME=${PKG_NAME:-"aiesda"}
 
 # Discover the Repo Root relative to this script's location
 # This allows you to run 'bash jobs/remove.sh' from anywhere
-JOBS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-PROJECT_ROOT=$(cd "$JOBS_DIR/.." && pwd)
+# JOBS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+PROJECT_ROOT=${PKG_Root:-$(cd "$JOBS_DIR/.." && pwd)}
 
 # Change directory to root so setup.py and VERSION are accessible
 cd "$PROJECT_ROOT"
