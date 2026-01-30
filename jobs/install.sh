@@ -190,9 +190,10 @@ python3 -m pip install --user --upgrade pip --break-system-packages
 for block in "${NATIVE_BLOCKS[@]}"; do
     echo "📦 Installing block: [$block]..."
     PKGS=$(get_req_block "$block")
-    [ ! -z "$PKGS" ] && python3 -m pip install --user $PKGS --break-system-packages
+    [ ! -z "$PKGS" ] && python3 -m pip install --user $PKGS --break-system-packages >> "${LOG_BASE}/install.log" 2>&1 &
+	show_spinner $!
 done
-show_spinner $!
+
 
 ###########################################################
 # --- 6. Complex Block Verification ---
