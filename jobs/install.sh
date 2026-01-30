@@ -108,6 +108,7 @@ step_label() {
 # Spinner for long-running background tasks
 show_spinner() {
     local pid=$1
+	local block=${2:-null}
     local delay=0.1
     local spinstr='|/-\'
     while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
@@ -118,6 +119,12 @@ show_spinner() {
         printf "\b\b\b\b\b\b"
     done
     printf "    \b\b\b\b"
+	# Check if the last background process actually succeeded
+    wait $!
+    if [ $? -ne 0 ]; then
+            echo -e "\n❌ ERROR: Installation of $block failed. Check logs at: ${LOG_BASE}/install.log"
+            exit 1
+    fi
 }
 
 ###########################################################
@@ -191,7 +198,7 @@ for block in "${NATIVE_BLOCKS[@]}"; do
     echo "📦 Installing block: [$block]..."
     PKGS=$(get_req_block "$block")
     [ ! -z "$PKGS" ] && python3 -m pip install --user $PKGS --break-system-packages >> "${LOG_BASE}/install.log" 2>&1 &
-	show_spinner $!
+	show_spinner $! $block
 done
 
 
