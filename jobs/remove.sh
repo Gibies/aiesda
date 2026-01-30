@@ -16,6 +16,7 @@ echo -e "Usage: \n $0"
                         echo "options:"
 			echo "-h	--help		Help"
 			echo "-s	--site		site information for coustum settings"
+			echo "-v	--version	target version for removal"
 			echo "-p	--pkg		Package Name"
                         exit 0
 }
@@ -26,6 +27,7 @@ while test $# -gt 0; do
      case "$1" in
             -h|--help) 	helpdesk;;
 		    -s|--site)	shift; SITE_NAME=$1; shift;;
+			-v|--version)	shift; TARGET_VERSION=$1; shift;;
 		    -p|--pkg)	shift; PKG_NAME=$1; shift;;
 		    *)		shift;;
 	esac
@@ -48,15 +50,13 @@ BUILD_ROOT="${HOME}/build"
 MODULE_PATH="${HOME}/modulefiles"
 
 # 1. Determine Target Version
-if [ -z "$1" ]; then
+if [ -z "${TARGET_VERSION}" ]; then
     if [ -f "VERSION" ]; then
         TARGET_VERSION=$(cat VERSION | tr -d '[:space:]' | sed 's/\.0\+/\./g')
     else
         echo "❌ ERROR: No version specified. Usage: ./remove.sh 2026.1"
         exit 1
     fi
-else
-    TARGET_VERSION=$1
 fi
 
 SPECIFIC_BUILD="${BUILD_ROOT}/${PROJECT_NAME}_build_${TARGET_VERSION}"
