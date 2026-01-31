@@ -184,7 +184,7 @@ fi
 ###########################################################
 # --- 4. Self-Healing: Check for pip ---
 ###########################################################
-(
+
 if ! command -v pip3 &> /dev/null; then
     echo "python3-pip not found. Attempting to install..."
     if [ "$IS_WSL" = true ]; then
@@ -195,9 +195,6 @@ if ! command -v pip3 &> /dev/null; then
         exit 1
     fi
 fi
-)&
-show_spinner $! "pip3install"
-
 
 ###########################################################
 # --- 5. Installation Loop ---
@@ -277,28 +274,28 @@ fi
 
 
 ###########################################################
-# --- 8. Build & Module Generation ---
+# --- 8.1 Build Package
 ###########################################################
-echo "🏗️  Finalizing AIESDA Build..."
-rm -rf "${BUILD_DIR}"
-# Build the package into the targeted build directory
-python3 setup.py build --build-base "${BUILD_DIR}" \
-                 egg_info --egg-base "${BUILD_DIR}" >> "${LOG_BASE}/install.log" 2>&1 &
-show_spinner $! "setup"
-
-# Manually sync assets that setup.py might miss or that you want in specific subfolders
-AIESDA_INTERNAL_LIB="${BUILD_DIR}/lib/aiesda"
-mkdir -p "${AIESDA_INTERNAL_LIB}"
-for asset in nml yaml jobs scripts pydic pylib; do
-    [ -d "${PROJECT_ROOT}/$asset" ] && cp -rp "${PROJECT_ROOT}/$asset" "${AIESDA_INTERNAL_LIB}/"
-done
-
-# Ensure VERSION file is in the build root so aiesda/__init__.py can find it
-cp "${PROJECT_ROOT}/VERSION" "${AIESDA_INTERNAL_LIB}/"
-
-# Ensure requirements.txt is archived with the build for future cleanup context
-cp "${PROJECT_ROOT}/requirements.txt" "${AIESDA_INTERNAL_LIB}/"
-
+echo "🏗️  Finalizing AIESDA Build & Metadata..."
+(
+    rm -rf "${BUILD_DIR}"
+    python3 setup.py build --build-base "${BUILD_DIR}" egg_info --egg-base "${BUILD_DIR}" >> "${LOG_BASE}/install.log" 2>&1
+    
+    # Sync Assets
+    AIESDA_INTERNAL_LIB="${BUILD_DIR}/lib/aiesda"
+    mkdir -p "${AIESDA_INTERNAL_LIB}"
+    for asset in nml yaml jobs scripts pydic pylib; do
+        [ -d "${PROJECT_ROOT}/$asset" ] && cp -rp "${PROJECT_ROOT}/$asset" "${AIESDA_INTERNAL_LIB}/"
+    done
+	# Ensure VERSION file is in the build root so aiesda/__init__.py can find it
+    cp "${PROJECT_ROOT}/VERSION" "${AIESDA_INTERNAL_LIB}/"
+	# Ensure requirements.txt is archived with the build for future cleanup context
+    cp "${PROJECT_ROOT}/requirements.txt" "${AIESDA_INTERNAL_LIB}/"
+) &
+show_spinner $! "Build & Archival"
+###########################################################
+# --- 9. Module Generation ---
+###########################################################
 # Define the target modulefile path
 PKG_MODULE_FILE="${MODULE_PATH}/${PROJECT_NAME}/${VERSION}"
 mkdir -p $(dirname "${PKG_MODULE_FILE}")
@@ -338,16 +335,6 @@ if { [file isdirectory \$aiesda_root/bin] } {
     prepend-path PATH            \$aiesda_root/bin
 }
 EOF_MODULE
-
-
-###########################################################
-# --- 9. Build Metadata archival for future reference ---
-###########################################################
-# Inside install.sh (After the build/install step)
-echo "📦 Archiving build metadata..."
-mkdir -p "${BUILD_DIR}/lib/aiesda"
-cp "${PROJECT_ROOT}/requirements.txt" "${BUILD_DIR}/lib/aiesda/requirements.txt"
-cp "${PROJECT_ROOT}/VERSION" "${BUILD_DIR}/lib/aiesda/VERSION"
 
 
 ###########################################################
