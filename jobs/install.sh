@@ -230,9 +230,12 @@ tmp_count=$(mktemp)
             # Clean package name: remove 'py', version constraints, and spaces
             lib=$(echo "$pkg" | sed 's/py//' | cut -d'=' -f1 | cut -d'>' -f1 | tr -d '[:space:]')
             
-            # Perform the import check
+			# Perform the import check
             if $PYTHON_EXE -c "import $lib" &>/dev/null; then
                 ((DA_FOUND_COUNT++))
+            else
+                # Record the failed library name
+                echo "$lib" >> "$tmp_failed"
             fi
         done
     done
@@ -243,12 +246,16 @@ show_spinner $! "DA Dependency Check"
 
 # Retrieve the results
 read -r DA_FOUND_COUNT TOTAL_DA_PKGS < "$tmp_count"
-rm -f "$tmp_count"
+FAILED_LIBS=$(tr '\n' ' ' < "$tmp_failed") # Convert list to space-separated string
+
+# Clean up temp files
+rm -f "$tmp_count" "$tmp_failed"
 
 DA_MISSING=$((TOTAL_DA_PKGS - DA_FOUND_COUNT))
 
 # Final Assessment
 if [ "$DA_MISSING" -gt 0 ]; then
+	echo -e "❌ Missing Libraries: \033[1;33m${FAILED_LIBS}\033[0m"
     if [ "$IS_WSL" = true ]; then
         echo "🐳 Found $DA_FOUND_COUNT/$TOTAL_DA_PKGS components. WSL mode will use Docker fallback."
     else
