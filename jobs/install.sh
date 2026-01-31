@@ -269,7 +269,7 @@ if [ "$DA_MISSING" -gt 0 ]; then
     
     chmod +x "${JOBS_DIR}/jedi_docker_build.sh"
     # PASS JEDI_VERSION instead of AIESDA VERSION
-    bash "${JOBS_DIR}/jedi_docker_build.sh" "$JEDI_VERSION"
+    bash "${JOBS_DIR}/jedi_docker_build.sh" "$JEDI_VERSION" &
 	show_spinner $! "JEDI v${JEDI_VERSION} Build on Docker"
 else
     echo "✅ No Docker fallback required."
