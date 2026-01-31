@@ -215,10 +215,9 @@ done
 ###########################################################
 DA_MISSING=0
 echo "🔍 Checking for pre-installed DA components..."
-
-# Create a temp file to store the counts (required for background subshells)
+# Temp files for counts and tracking failed libraries
 tmp_count=$(mktemp)
-
+tmp_failed=$(mktemp)
 (
     DA_FOUND_COUNT=0
     TOTAL_DA_PKGS=0
