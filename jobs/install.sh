@@ -35,9 +35,49 @@ done
 ###########################################################################################
 options $(echo $@  | tr "=" " ")
 ###########################################################################################
-###########################################################
+
+# Helper for clean progress reporting
+step_label() {
+    echo -e "\n\033[1;34m[STEP $1]: $2\033[0m"
+    echo "------------------------------------------------"
+}
+
+show_spinner() {
+    local pid=$1
+    local block=${2:-"task"}
+    
+    # Safety: If no PID is provided, just exit the function
+    [[ -z "$pid" || "$pid" == "0" ]] && return 0
+
+    local delay=0.1
+    local spinstr='|/-\'
+    
+    # kill -0 checks if the process is still alive without sending a signal
+    while kill -0 "$pid" 2>/dev/null; do
+        local temp=${spinstr#?}
+        printf "\r [%c] Processing %s... " "$spinstr" "$block"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+    done
+
+    # Final result check
+    wait "$pid"
+    local exit_code=$?
+    
+    if [ $exit_code -ne 0 ]; then
+        echo -e "\n\n❌ ERROR: '$block' failed (Exit Code: $exit_code)"
+        echo "📝 Details in: ${LOG_BASE}/install.log"
+        exit 1
+    else
+        printf "\r [✅] %s completed.           \n" "$block"
+    fi
+}
+###########################################################################################
+
+
+###########################################################################################
 # --- 1. Configuration ---
-###########################################################
+###########################################################################################
 
 PROJECT_NAME=${PKG_NAME:-"aiesda"}
 # Capture Site Argument (Default to 'docker')
@@ -95,42 +135,15 @@ fi
 # Verify the extraction worked
 echo "🔍 Loaded ${#NATIVE_BLOCKS[@]} Native Blocks and ${#COMPLEX_BLOCKS[@]} Complex Blocks."
 
-###########################################################
+###########################################################################################
 # --- 1.1 Progress reporting function ---		###
-###########################################################
+###########################################################################################
 
-# Helper for clean progress reporting
-step_label() {
-    echo -e "\n\033[1;34m[STEP $1]: $2\033[0m"
-    echo "------------------------------------------------"
-}
 
-# Spinner for long-running background tasks
-show_spinner() {
-    local pid=$1
-	local block=${2:-"process"}
-    local delay=0.1
-    local spinstr='|/-\'
-	[[ -z "$pid" || "$pid" == "0" ]] && return 0
-    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
-        local temp=${spinstr#?}
-        printf " [%c]  " "$spinstr" "$block"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
-        printf "\b\b\b\b\b\b"
-    done
-    printf "    \b\b\b\b"
-	# Check if the last background process actually succeeded
-    wait $!
-    if [ $? -ne 0 ]; then
-            echo -e "\n❌ ERROR: Installation of $block failed. Check logs at: ${LOG_BASE}/install.log"
-            exit 1
-    fi
-}
 
-###########################################################
+###########################################################################################
 # --- 2.1 Load Site-Specific Environment 		###
-###########################################################
+###########################################################################################
 ENV_TCL="${PROJECT_ROOT}/sites/${SITE_NAME}/env_setup.tcl"
 if [ -f "$ENV_TCL" ]; then
     echo "🌐 Loading environment from: $ENV_TCL"
