@@ -28,20 +28,19 @@ while test $# -gt 0; do
 done
 }
 ###########################################################################################
-SELF=$(realpath ${0})
+SELF=$(realpath "${0}")
+JOBS_DIR=$(cd "$(dirname "${SELF}")" && pwd)
+if [[ "$SELF" == *"/jobs/"* ]]; then
+    export PKG_ROOT=$(cd "$JOBS_DIR/.." && pwd)
+else
+    export PKG_ROOT="$JOBS_DIR"
+fi
+export PKG_NAME=${PKG_ROOT##*/:-"aiesda"}
+PROJECT_ROOT="${PKG_ROOT}"
+PROJECT_NAME="${PKG_NAME}"
 HOST=$(hostname)
-export JOBSDIR=${SELF%/*}
-export PKG_ROOT=${SELF%/jobs/*:-$(cd "$JOBS_DIR/.." && pwd)}
-export PKG_NAME=${PKG_ROOT##*/}
-options $(echo $@  | tr "=" " ")
+options $(echo "$@" | tr "=" " ")
 ###########################################################################################
-
-PROJECT_NAME=${PKG_NAME:-"aiesda"}
-
-# Discover the Repo Root relative to this script's location
-# This allows you to run 'bash jobs/remove.sh' from anywhere
-# JOBS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-PROJECT_ROOT=${PKG_Root}
 
 # Change directory to root so setup.py and VERSION are accessible
 cd "$PROJECT_ROOT"
