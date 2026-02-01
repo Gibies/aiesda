@@ -27,6 +27,9 @@ echo "🔍 Detected JEDI Target Version: ${JEDI_VERSION}"
 JEDI_MODULE_FILE="${MODULE_PATH}/jedi/${JEDI_VERSION}"
 
 # --- 2. Docker Fallback Logic ---
+if [ -z "$IS_WSL" ]; then
+    grep -qi "microsoft" /proc/version && IS_WSL=true || IS_WSL=false
+fi
 # Note: Ensure IS_WSL is passed or detected here
 if [ "$IS_WSL" = true ]; then
     echo "🐳 JEDI components missing. Checking Docker..."
