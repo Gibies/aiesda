@@ -10,15 +10,19 @@ SITE ?= docker
 
 .PHONY: install clean test help sync version bump archive reinstall update release
 
+# Use a variable for colors to make it maintainable
+GREEN  := $(shell tput -Txterm setaf 2)
+RESET  := $(shell tput -Txterm sgr0)
+
 # Default target
 help:
 	@echo "AIESDA Management Commands:"
-	@echo "  make sync      - Pull remote source (handles elogin)"
-	@echo "  make install   - Build and install [SITE=$(SITE)]"
-	@echo "  make clean     - Surgical uninstall of current version"
-	@echo "  make update    - Sync source and reinstall"
-	@echo "  make release   - Bump version and push to repository"
-	@echo "  make test      - Run post-installation verification"
+	@echo "  ${GREEN} make sync ${RESET}      - Pull remote source (handles elogin)"
+	@echo "  ${GREEN} make install ${RESET}   - Build and install [SITE=$(SITE)]"
+	@echo "  ${GREEN} make clean ${RESET}     - Surgical uninstall of current version"
+	@echo "  ${GREEN} make update ${RESET}    - Sync source and reinstall"
+	@echo "  ${GREEN} make release ${RESET}   - Bump version and push to repository"
+	@echo "  ${GREEN} make test ${RESET}      - Run post-installation verification"
 
 # Use this to verify the version before a build
 version:
@@ -28,7 +32,7 @@ sync:
 	@bash jobs/update_pkg.sh
 
 install:
-	@bash jobs/install.sh $(SITE)
+	@bash jobs/install.sh --site $(SITE)
 
 clean:
 	@bash jobs/remove.sh $$(cat VERSION)
