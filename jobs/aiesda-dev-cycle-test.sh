@@ -122,7 +122,7 @@ echo "🐍 Testing Python Namespace and CLI..."
 # ---------------------------------------------------------
 echo "🧹 Testing Surgical Uninstaller..."
 # We provide 'n' to avoid deleting the Docker image during every dev test
-echo "n" | bash remove.sh -v "${NEW_VER}" -s "${SITE}"
+echo "n" | bash remove.sh -v "${NEW_VER}" -s "${SITE_NAME}"
 
 if [ ! -d "$BUILD_DIR" ]; then
     echo "✅ Cleanup verified: $BUILD_DIR is gone."
