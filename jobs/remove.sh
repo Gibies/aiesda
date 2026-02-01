@@ -28,6 +28,8 @@ while test $# -gt 0; do
 done
 }
 ###########################################################################################
+
+###########################################################################################
 SELF=$(realpath "${0}")
 JOBS_DIR=$(cd "$(dirname "${SELF}")" && pwd)
 if [[ "$SELF" == *"/jobs/"* ]]; then
@@ -35,16 +37,31 @@ if [[ "$SELF" == *"/jobs/"* ]]; then
 else
     export PKG_ROOT="$JOBS_DIR"
 fi
-export PKG_NAME=${PKG_ROOT##*/:-"aiesda"}
-PROJECT_ROOT="${PKG_ROOT}"
-PROJECT_NAME="${PKG_NAME}"
-HOST=$(hostname)
 options $(echo "$@" | tr "=" " ")
+export PKG_NAME=${PKG_ROOT##*/:-"aiesda"}
+PROJECT_NAME="${PKG_NAME}"
+PROJECT_ROOT="${PKG_ROOT}"
+SITE_NAME=${SITE_NAME:-"docker"}
+HOST=$(hostname)
+REQUIREMENTS="$PROJECT_ROOT/requirements.txt"
+VERSION=$(cat ${PROJECT_ROOT}/VERSION 2>/dev/null | tr -d '[:space:]' | sed 's/\.0\+/\./g')
+VERSION=${VERSION:-"dev"}
+JEDI_VERSION=$(grep -iE "^jedi[>=]*" "$REQUIREMENTS" | head -n 1 | sed 's/[^0-9.]*//g')
+JEDI_VERSION=${JEDI_VERSION:-"latest"}
+export JEDI_VERSION="${JEDI_VERSION}"
+BUILD_ROOT="${HOME}/build"
+BUILD_DIR="${BUILD_ROOT}/${PROJECT_NAME}_build_${VERSION}"
+BUILD_WORKSPACE="${HOME}/build/docker_build_tmp"
+MODULE_PATH="${HOME}/modulefiles"
+JEDI_MODULE_FILE="${MODULE_PATH}/jedi/${JEDI_VERSION}"
+PKG_MODULE_FILE="${MODULE_PATH}/${PROJECT_NAME}/${VERSION}"
+LOG_BASE="${HOME}/logs/$(date +%Y/%m/%d)/${PROJECT_NAME}/${VERSION}"
+###########################################################################################
 ###########################################################################################
 
 # Change directory to root so setup.py and VERSION are accessible
 cd "$PROJECT_ROOT"
-BUILD_ROOT="${HOME}/build"
+
 MODULE_PATH="${HOME}/modulefiles"
 
 # 1. Determine Target Version
