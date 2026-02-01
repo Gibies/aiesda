@@ -2,7 +2,11 @@
 # ==============================================================================
 # AIESDA Development Cycle Stress Test
 # ==============================================================================
+# aiesda-dev-cycle-test.sh
 
+
+# Auto-revert version if the test fails
+trap 'echo "$START_VER" > VERSION; echo "⚠️ Test failed. Version reverted to $START_VER."' ERR
 set -e  # Immediate exit on error
 
 # Ensure we are in the repo root
