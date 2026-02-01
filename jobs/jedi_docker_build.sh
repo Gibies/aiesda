@@ -2,6 +2,30 @@
 # ==============================================================================
 # AIESDA JEDI Docker Builder (WSL/Laptop Integration)
 # ==============================================================================
+# jedi_docker_build.sh
+###########################################################################################
+helpdesk()
+{
+echo -e "Usage: \n $0"
+                        echo "options:"
+			echo "-h	--help		Help"
+			echo "-s	--site		site information for coustum settings"
+			echo "-p	--pkg		Package Name"
+                        exit 0
+}
+###########################################################################################
+options()
+{
+while test $# -gt 0; do
+     case "$1" in
+            -h|--help) 	helpdesk;;
+		    -s|--site)	shift; SITE_NAME=$1; shift;;
+		    -p|--pkg)	shift; PKG_NAME=$1; shift;;
+		    *)		shift;;
+	esac
+done
+}
+###########################################################################################
 
 # --- 1. Path & Environment Setup ---
 SELF=$(realpath "${0}")
