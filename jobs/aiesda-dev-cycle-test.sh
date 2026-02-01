@@ -84,7 +84,7 @@ echo "✅ Target Version set to: $NEW_VER"
 echo "🏗️  Executing Out-of-Source Installation..."
 # We pipe 'n' to install.sh in case it asks for sudo/interactive prompts 
 # (assuming your environment is already pre-configured)
-bash install.sh -v "${NEW_VER}" -s "${SITE}"
+bash install.sh -v "${NEW_VER}" -s "${SITE_NAME}"
 
 # ---------------------------------------------------------
 # 3. ARCHITECTURE VERIFICATION
