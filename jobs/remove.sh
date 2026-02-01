@@ -83,8 +83,8 @@ echo "🧹 Starting surgical cleanup for ${PROJECT_NAME} v${TARGET_VERSION}..."
 [ "$JEDI_VERSION" != "unknown" ] && echo "🔗 Linked JEDI version detected: $JEDI_VERSION"
 
 # --- ADDED: Print the specific libraries being de-referenced ---
-if [ ! -z "$LIBS_TO_CLEAN" ]; then
-    echo -e "📦 Dependencies tracked in this version: \033[1;36m${LIBS_TO_CLEAN}\033[0m"
+if [ ! -z "$LIBS_IN_BUILD" ]; then
+    echo -e "📦 Dependencies tracked in this version: \033[1;36m${LIBS_IN_BUILD}\033[0m"
 fi
 
 # Define JEDI paths based on the extracted version
