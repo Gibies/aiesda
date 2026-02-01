@@ -63,22 +63,30 @@ SPECIFIC_BUILD="${BUILD_ROOT}/${PROJECT_NAME}_build_${TARGET_VERSION}"
 # Path to requirements inside the build area (adjust based on your asset sync logic)
 BUILD_REQUIREMENTS="${SPECIFIC_BUILD}/lib/aiesda/requirements.txt"
 
-# 2. Extract JEDI Version from the TARGET BUILD requirements
+# 2. Extract JEDI Version and Dependencies from the TARGET BUILD requirements
 if [ -f "$BUILD_REQUIREMENTS" ]; then
-    # Extracts the version number even if the line is 'jedi==1.2.3' or 'jedi>=1.2.3'
+    # Extracts the version number
     JEDI_VERSION=$(grep -iE "^jedi" "$BUILD_REQUIREMENTS" | head -n 1 | sed 's/.*[>=]\+\s*//g' | tr -d '[:space:]')
     
-    # If the requirements just said 'jedi' without a version, default to 'latest'
+    # NEW: Extract the specific libraries that were checked for this build
+    # This reads the 'COMPLEX_BLOCKS' variables if they were archived, or parses requirements
+    LIBS_TO_CLEAN=$(grep -iE "^(ufo|ioda|soca|fv3jedi|oops)" "$BUILD_REQUIREMENTS" | cut -d'=' -f1 | cut -d'>' -f1 | tr '\n' ' ')
+    
     if [[ -z "$JEDI_VERSION" || "$JEDI_VERSION" == "jedi" ]]; then
         JEDI_VERSION="latest"
     fi
 fi
 
-# Fallback if the build area is already partially gone or requirements missing
+# Fallback if the build area is already partially gone or requirements missing.
 JEDI_VERSION=${JEDI_VERSION:-"unknown"}
 
 echo "🧹 Starting surgical cleanup for ${PROJECT_NAME} v${TARGET_VERSION}..."
 [ "$JEDI_VERSION" != "unknown" ] && echo "🔗 Linked JEDI version detected: $JEDI_VERSION"
+
+# --- ADDED: Print the specific libraries being de-referenced ---
+if [ ! -z "$LIBS_TO_CLEAN" ]; then
+    echo -e "📦 Dependencies tracked in this version: \033[1;36m${LIBS_TO_CLEAN}\033[0m"
+fi
 
 # Define JEDI paths based on the extracted version
 JEDI_IMAGE="${PROJECT_NAME}_jedi:${JEDI_VERSION}" # Docker tag usually matches AIESDA version
