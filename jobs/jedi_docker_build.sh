@@ -29,33 +29,29 @@ done
 ###########################################################################################
 # --- 1.1 Environment Configuration ---
 ###########################################################################################
-SELF=$(realpath ${0})
-HOST=$(hostname)
-export JOBSDIR=${SELF%/*}
-export PKG_ROOT=${SELF%/jobs/*}
-export PKG_NAME=${PKG_ROOT##*/}
-options $(echo $@  | tr "=" " ")
-# --- 1. Path & Environment Setup ---
+###########################################################################################
+SELF=$(realpath "${0}")
+JOBS_DIR=$(cd "$(dirname "${SELF}")" && pwd)
+if [[ "$SELF" == *"/jobs/"* ]]; then
+    export PKG_ROOT=$(cd "$JOBS_DIR/.." && pwd)
+else
+    export PKG_ROOT="$JOBS_DIR"
+fi
+options $(echo "$@" | tr "=" " ")
+export PKG_NAME=${PKG_ROOT##*/:-"aiesda"}
+PROJECT_NAME="${PKG_NAME}"
 PROJECT_ROOT="${PKG_ROOT}"
 MODULE_PATH="${HOME}/modulefiles"
-
-# Ensure VERSION and PROJECT_NAME are set (inherited or defaulted)
 VERSION=${VERSION:-"dev"}
-PROJECT_NAME=${PROJECT_NAME:-"aiesda"}
 BUILD_DIR="${HOME}/build/${PROJECT_NAME}_build_${VERSION}"
 BUILD_WORKSPACE="${HOME}/build/docker_build_tmp"
-
-# Corrected spelling for variable consistency
+HOST=$(hostname)
 REQUIREMENTS="$PROJECT_ROOT/requirements.txt"
-
 # Extract JEDI version from requirements.txt
 JEDI_VERSION=$(grep -iE "^jedi[>=]*" "$REQUIREMENTS" | head -n 1 | sed 's/[^0-9.]*//g')
 JEDI_VERSION=${JEDI_VERSION:-"latest"}
-echo "🔍 Detected JEDI Target Version: ${JEDI_VERSION}"
-
-# Define Module File Location
 JEDI_MODULE_FILE="${MODULE_PATH}/jedi/${JEDI_VERSION}"
-
+###########################################################################################
 # --- 2. Docker Fallback Logic ---
 if [ -z "$IS_WSL" ]; then
     grep -qi "microsoft" /proc/version && IS_WSL=true || IS_WSL=false
