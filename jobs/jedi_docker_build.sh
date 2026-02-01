@@ -140,6 +140,12 @@ AIESDA_INSTALLED_ROOT="${BUILD_DIR}"
 cat << EOF > "${AIESDA_BIN_DIR}/jedi-run"
 #!/bin/bash
 # AIESDA JEDI Docker Wrapper
+# Quick check if Docker is running
+if ! docker ps &>/dev/null; then
+    echo "❌ ERROR: Docker daemon is not running."
+    echo "Please ensure Docker Desktop is started and WSL integration is enabled."
+    exit 1
+fi
 # Mounts the current directory AND the AIESDA install root for full integration
 docker run -it --rm \\
     -v "\$(pwd):/app/work" \\
