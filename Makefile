@@ -8,7 +8,7 @@ MSG ?= "routine_update"
 
 SITE ?= docker
 
-.PHONY: install clean test help sync version bump archive reinstall update release
+.PHONY: install clean test help sync version bump archive reinstall update release check-paths
 
 # Use a variable for colors to make it maintainable
 GREEN  := $(shell tput -Txterm setaf 2)
@@ -28,11 +28,14 @@ help:
 version:
 	@echo "Current Target: $$(cat VERSION)"
 
+check-paths:
+	@if [ $$(pwd) = $$(readlink -f $(BUILD_DIR) | cut -c 1-$${#$$(pwd)}) ]; then \
+		echo "Build directory cannot be inside the source tree!"; \
+		exit 1; \
+	fi
+
 sync:
 	@bash jobs/update_pkg.sh
-
-install:
-	@bash jobs/install.sh --site $(SITE)
 
 clean:
 	@bash jobs/remove.sh $$(cat VERSION)
@@ -46,6 +49,10 @@ bump:
 
 archive:
 	@bash jobs/archive_pkg.sh -m $(MSG)
+
+install:
+	@$(MAKE) check-paths
+	@bash jobs/install.sh --site $(SITE)
 
 # Ensure clean finishes before install starts
 reinstall:
