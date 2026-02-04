@@ -129,8 +129,10 @@ if [[ "$SITE_NAME" == "docker" ]] && [[ "$NEW_JEDI_REQ" != "$OLD_JEDI_INSTALLED"
     else
     	if [[ "$JEDI_VERSION" == "unknown" ]]; then
 		confirm_jedi="y"
+		DO_FULL_WIPE="true"
 	else
 		confirm_jedi="n"
+		DO_FULL_WIPE="false"
     	fi
     fi
 fi
