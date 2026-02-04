@@ -53,6 +53,9 @@ bump:
 archive:
 	@bash jobs/archive_pkg.sh -m $(MSG)
 
+jedidocker:
+	@bash jobs/jedi_docker_build.sh
+
 install:
 	@$(MAKE) check-paths
 	@bash jobs/install.sh --site $(SITE)
