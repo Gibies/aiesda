@@ -34,6 +34,9 @@ check-paths:
 		exit 1; \
 	fi
 
+check-modules:
+	@bash jobs/setup_env_module.sh
+
 sync:
 	@bash jobs/update_pkg.sh
 
