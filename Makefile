@@ -38,6 +38,7 @@ clean:
 	@bash jobs/remove.sh $$(cat VERSION)
 
 test:
+	@$(MAKE) sync
 	@bash jobs/aiesda-dev-cycle-test.sh --site $(SITE)
 
 bump:
