@@ -122,6 +122,7 @@ if ! docker ps &>/dev/null; then
 fi
 
 # We use backslashes to escape variables we want to stay literal in the file
+# backslash/quotes avoid volume flag break in case of space in the path
 docker run -it --rm \\
 	-v "\$(pwd):/home/aiesda" \\
     -v "${BUILD_DIR}:/app_build" \\
