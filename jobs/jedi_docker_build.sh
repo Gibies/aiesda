@@ -166,6 +166,7 @@ echo "📋 Modulefile created at: ${JEDI_MODULE_FILE}"
 
 # Create a 'latest' symlink for the JEDI module
 JEDI_MODULE_DIR=$(dirname "${JEDI_MODULE_FILE}")
+ln -snf "${JEDI_MODULE_DIR}/latest"
 ln -sf "${JEDI_VERSION}" "${JEDI_MODULE_DIR}/latest"
 echo "🔗 Linked jedi/${JEDI_VERSION} to jedi/latest"
 
