@@ -139,36 +139,26 @@ fi
 AIESDA_BIN_DIR="${BUILD_DIR}/bin"
 mkdir -p "$AIESDA_BIN_DIR"
 
-# Verify this variable is set at the top of your builder or passed in
-AIESDA_INSTALLED_ROOT="${BUILD_DIR}"
-
-# The Wrapper Creation
+# We write the content to a variable first or just use one clean cat
 cat << EOF > "${AIESDA_BIN_DIR}/jedi-run"
-#!/bin/bash
-# AIESDA JEDI Docker Wrapper
-# Quick check if Docker is running
-if ! docker ps &>/dev/null; then
-    echo "❌ ERROR: Docker daemon is not running."
-    echo "Please ensure Docker Desktop is started and WSL integration is enabled."
-    exit 1
-fi
-
-# Inside jobs/jedi_docker_build.sh
-mkdir -p "${BUILD_DIR}/bin"
-
-cat << EOF > "${BUILD_DIR}/bin/jedi-run"
 #!/bin/bash
 # AIESDA JEDI Bridge Wrapper
 # Redirects local python execution into the JEDI Docker Container
+
+if ! docker ps &>/dev/null; then
+    echo "❌ ERROR: Docker daemon is not running."
+    exit 1
+fi
+
 docker run -it --rm \\
     -v "\$(pwd):/home/aiesda" \\
     -v "${BUILD_DIR}:/app_build" \\
-    --env PYTHONPATH="/app_build/lib:\$PYTHONPATH" \\
-    aiesda_jedi:${VERSION} "\$@"
+    -e PYTHONPATH="/app_build/lib:/app_build/lib/aiesda/pylib:/app_build/lib/aiesda/pydic:\$PYTHONPATH" \\
+    -w /home/aiesda \\
+    aiesda_jedi:${JEDI_VERSION} "\$@"
 EOF
 
-chmod +x "${BUILD_DIR}/bin/jedi-run"
-
+chmod +x "${AIESDA_BIN_DIR}/jedi-run"
 
 # --- 3. Module Generation ---
 mkdir -p "$(dirname "${JEDI_MODULE_FILE}")"
