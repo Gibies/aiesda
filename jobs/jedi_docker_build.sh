@@ -169,11 +169,11 @@ proc ModulesHelp { } {
 EOF_MODULE
 
 echo "📋 Modulefile created at: ${JEDI_MODULE_FILE}"
-
-# Create a 'latest' symlink for the JEDI module
 JEDI_MODULE_DIR=$(dirname "${JEDI_MODULE_FILE}")
-ln -snf "${JEDI_MODULE_DIR}/latest"
-ln -sf "${JEDI_VERSION}" "${JEDI_MODULE_DIR}/latest"
+# Move to the directory to avoid path loops
+cd "${JEDI_MODULE_DIR}"
+# Create a 'latest' symlink for the JEDI module
+ln -snf "${JEDI_VERSION}" "latest"
 echo "🔗 Linked jedi/${JEDI_VERSION} to jedi/latest"
 
 ###########################################################################################
