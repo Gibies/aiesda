@@ -115,7 +115,23 @@ JEDI_MODULE_FILE="${MODULE_PATH}/jedi/${JEDI_VERSION}"
 PKG_MODULE_FILE="${MODULE_PATH}/${PROJECT_NAME}/${VERSION}"
 LOG_BASE="${HOME}/logs/$(date +%Y/%m/%d)/${PROJECT_NAME}/${VERSION}"
 ###########################################################################################
-###########################################################################################cd "$PROJECT_ROOT"
+# If the user tries to use a local folder like 'build/', 
+# force it to a hidden global build tree instead.
+if [[ "$BUILD_DIR" != /* ]]; then
+    BUILD_DIR="${HOME}/.aiesda_build_cache/$(basename "$PROJECT_ROOT")_${VERSION}"
+    echo "⚠️  Local build path detected. Redirecting build to: $BUILD_DIR"
+fi
+# Ensure BUILD_DIR is not inside PROJECT_ROOT
+REAL_ROOT=$(readlink -f "$PROJECT_ROOT")
+REAL_BUILD=$(readlink -f "$BUILD_DIR")
+if [[ "$REAL_BUILD" == "$REAL_ROOT"* ]]; then
+    echo "❌ ERROR: Build directory ($BUILD_DIR) is inside the repository folder ($PROJECT_ROOT)."
+    echo "👉 Please change BUILD_DIR in Section 1 to a path outside this folder (e.g., ~/aiesda_build)."
+    exit 1
+fi
+###########################################################################################
+
+cd "$PROJECT_ROOT"
 mkdir -p "$LOG_BASE"
 echo "📝 Logs for this installation session: ${LOG_BASE}/install.log"
 exec > >(tee -a "${LOG_BASE}/install.log") 2>&1
