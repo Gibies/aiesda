@@ -164,25 +164,32 @@ chmod +x "${AIESDA_BIN_DIR}/jedi-run"
 
 # --- 3. Module Generation ---
 mkdir -p "$(dirname "${JEDI_MODULE_FILE}")"
-
 cat << EOF_MODULE > "${JEDI_MODULE_FILE}"
 #%Module1.0
-## JEDI v${JEDI_VERSION} (AIESDA Bridge)
-set version      ${JEDI_VERSION}
-set jedi_root    ${BUILD_DIR}
+## JEDI v${JEDI_VERSION} (AIESDA Docker Bridge)
+## Generated on: $(date)
+
+# Hardcoded paths from installation
+set version      "${JEDI_VERSION}"
+set aiesda_root	 "${BUILD_DIR}"
+set aiesda_bin   "${BUILD_DIR}/bin"
 
 setenv           JEDI_VERSION  \$version
-setenv           JEDI_ROOT     \$jedi_root
+setenv           JEDI_METHOD   "docker"
+setenv			 JEDI_ROOT		\$aiesda_root
 
-if { [file isdirectory \$jedi_root/bin] } {
-    prepend-path PATH            \$jedi_root/bin
+# Point to the directory containing 'jedi-run'
+if { [file isdirectory \$aiesda_bin] } {
+    prepend-path PATH          \$aiesda_bin
 }
 
 proc ModulesHelp { } {
-    puts stderr "This module provides 'jedi-run' to execute JEDI tasks via Docker on WSL."
+    puts stderr "This module enables the AIESDA-JEDI Docker bridge."
+    puts stderr "It provides 'jedi-run' to execute JEDI commands within a container."
 }
-
 EOF_MODULE
+
+echo "📋 Modulefile created at: ${JEDI_MODULE_FILE}"
 
 # --- 4. Testing Environment & Instructions ---
 echo "###########################################################"
